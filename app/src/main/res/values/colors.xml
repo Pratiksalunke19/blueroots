@@ -95,4 +95,9 @@
     <color name="rejected_status">#F44336</color>
     <color name="ocean_accent">#00BCD4</color>
     <color name="mangrove_dark">#2E7D32</color>
+
+    <!-- Status Colors -->
+    <color name="status_ready">#4CAF50</color>
+    <color name="status_warning">#FF9800</color>
+    <color name="status_error">#F44336</color>
 </resources>
