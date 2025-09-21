@@ -109,6 +109,7 @@
                             android:id="@+id/buttonLogin"
                             android:layout_width="match_parent"
                             android:layout_height="56dp"
+                            android:paddingEnd="50dp"
                             android:text="Login"
                             android:textSize="16sp"
                             app:icon="@drawable/ic_login_24"

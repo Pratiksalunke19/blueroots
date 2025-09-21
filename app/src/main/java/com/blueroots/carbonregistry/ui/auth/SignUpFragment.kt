@@ -5,12 +5,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import androidx.appcompat.app.AlertDialog  // FIXED: Import the correct AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.blueroots.carbonregistry.R
 import com.blueroots.carbonregistry.databinding.FragmentSignupBinding
 import com.blueroots.carbonregistry.viewmodel.AuthViewModel
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 
 class SignUpFragment : Fragment() {
@@ -19,6 +21,9 @@ class SignUpFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val authViewModel: AuthViewModel by activityViewModels()
+
+    // FIXED: Use androidx.appcompat.app.AlertDialog instead of android.app.AlertDialog
+    private var successDialog: AlertDialog? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -89,19 +94,43 @@ class SignUpFragment : Fragment() {
         authViewModel.signUpResult.observe(viewLifecycleOwner) { result ->
             when (result) {
                 is AuthViewModel.AuthResult.Success -> {
-                    Snackbar.make(binding.root, result.message, Snackbar.LENGTH_LONG).show()
-                    // Don't navigate - user needs to verify email first
-                    findNavController().navigateUp() // Go back to login
+                    // Show success dialog
+                    showSuccessDialog()
+                    // Clear the result to prevent showing dialog again
+                    authViewModel.clearSignUpResult()
                 }
                 is AuthViewModel.AuthResult.Error -> {
                     Snackbar.make(binding.root, result.message, Snackbar.LENGTH_LONG).show()
+                    // Also clear error result
+                    authViewModel.clearSignUpResult()
                 }
             }
         }
     }
 
+    private fun showSuccessDialog() {
+        // Dismiss any existing dialog first
+        successDialog?.dismiss()
+
+        successDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Account Created Successfully!")
+            .setMessage("Please check your email and click the verification link before signing in.")
+            .setIcon(R.drawable.ic_email_24)
+            .setPositiveButton("Go to Login") { dialog, _ ->
+                dialog.dismiss()
+                findNavController().navigateUp()
+            }
+            .setCancelable(false)
+            .create()
+
+        successDialog?.show()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
+        // Dismiss dialog when fragment is destroyed
+        successDialog?.dismiss()
+        successDialog = null
         _binding = null
     }
 }

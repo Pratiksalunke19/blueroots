@@ -193,6 +193,14 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    fun clearSignUpResult() {
+        _signUpResult.value = null
+    }
+
+    fun clearLoginResult() {
+        _loginResult.value = null
+    }
+
     fun refreshUserProfile() {
         viewModelScope.launch {
             loadUserProfile()

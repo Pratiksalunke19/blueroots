@@ -116,7 +116,7 @@ class ProfileFragment : Fragment() {
 
     private fun updateUserInfo(user: com.blueroots.carbonregistry.data.models.AuthUser) {
         binding.apply {
-            textViewName.text = user.fullName.ifBlank { "User" }
+            textViewName.text = user.fullName.trim('"').ifBlank { "User" }
             textViewEmail.text = user.email
 
             // Update verification status

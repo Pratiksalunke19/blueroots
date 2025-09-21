@@ -24,7 +24,7 @@
                 android:layout_marginBottom="24dp"
                 android:text="Your Carbon Credits"
                 android:textAppearance="?attr/textAppearanceHeadlineMedium"
-                android:textColor="?attr/colorPrimary"
+                android:textColor="?attr/colorOnSurface"
                 android:gravity="center" />
 
             <!-- Summary Cards -->
