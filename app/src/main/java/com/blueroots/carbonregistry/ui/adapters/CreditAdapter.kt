@@ -2,48 +2,60 @@ package com.blueroots.carbonregistry.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.blueroots.carbonregistry.databinding.ItemCreditBinding
 import com.blueroots.carbonregistry.data.models.CarbonCredit
+import com.blueroots.carbonregistry.databinding.ItemCreditBinding
 import java.text.SimpleDateFormat
 import java.util.*
 
-class CreditAdapter : ListAdapter<CarbonCredit, CreditAdapter.CreditViewHolder>(CreditDiffCallback()) {
+class CreditAdapter(
+    private val credits: List<CarbonCredit>,
+    private val onCreditClick: (CarbonCredit) -> Unit
+) : RecyclerView.Adapter<CreditAdapter.CreditViewHolder>() {
+
+    private val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CreditViewHolder {
-        val binding = ItemCreditBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding = ItemCreditBinding.inflate(
+            LayoutInflater.from(parent.context),
+            parent,
+            false
+        )
         return CreditViewHolder(binding)
     }
 
     override fun onBindViewHolder(holder: CreditViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(credits[position])
     }
 
-    inner class CreditViewHolder(private val binding: ItemCreditBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    override fun getItemCount(): Int = credits.size
+
+    inner class CreditViewHolder(
+        private val binding: ItemCreditBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(credit: CarbonCredit) {
-            val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-
             binding.apply {
-                textCreditId.text = "ID: ${credit.id}"
-                textAmount.text = "${credit.amount} tCO2e"
-                textStatus.text = "Status: ${credit.status}"
-                textTxHash.text = "Tx: ${credit.blockchainTxHash}"
-                textIssuedDate.text = "Issued: ${dateFormat.format(Date(credit.issuedDate))}"
+                // FIXED: Using correct field names from CarbonCredit model
+                textCreditId.text = "ID: ${credit.batchId}" // Using batchId instead of id
+                textAmount.text = "${credit.quantity} tCO2e" // Using quantity instead of amount
+                textStatus.text = "Status: ${credit.statusDisplayName}" // Using statusDisplayName
+
+                // For blockchain transaction hash - using serial numbers or a placeholder
+                textTxHash.text = if (credit.serialNumbers.isNotEmpty()) {
+                    "Serial: ${credit.serialNumbers.first()}"
+                } else {
+                    "Serial: Not assigned"
+                }
+
+                // FIXED: Using issueDate instead of issuedDate
+                textIssuedDate.text = "Issued: ${dateFormat.format(credit.issueDate)}"
+
+                // Handle click
+                root.setOnClickListener {
+                    onCreditClick(credit)
+                }
             }
         }
-    }
-}
-
-class CreditDiffCallback : DiffUtil.ItemCallback<CarbonCredit>() {
-    override fun areItemsTheSame(oldItem: CarbonCredit, newItem: CarbonCredit): Boolean {
-        return oldItem.id == newItem.id
-    }
-
-    override fun areContentsTheSame(oldItem: CarbonCredit, newItem: CarbonCredit): Boolean {
-        return oldItem == newItem
     }
 }
