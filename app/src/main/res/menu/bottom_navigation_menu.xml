@@ -1,22 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+
     <item
-        android:id="@+id/nav_registration"
+        android:id="@+id/projectRegistrationFragment"
         android:icon="@drawable/ic_add_circle_24"
         android:title="Register" />
 
     <item
-        android:id="@+id/nav_monitoring"
+        android:id="@+id/monitoringUploadFragment"
         android:icon="@drawable/ic_camera_24"
         android:title="Monitor" />
 
     <item
-        android:id="@+id/nav_credits"
+        android:id="@+id/creditIssuanceFragment"
         android:icon="@drawable/ic_eco_24"
         android:title="Credits" />
 
     <item
-        android:id="@+id/nav_profile"
+        android:id="@+id/profileFragment"
         android:icon="@drawable/ic_person_24"
         android:title="Profile" />
+
 </menu>

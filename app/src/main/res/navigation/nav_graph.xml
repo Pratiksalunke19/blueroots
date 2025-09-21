@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/loginFragment">
+
+    <!-- Auth Flow -->
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.blueroots.carbonregistry.ui.auth.LoginFragment"
+        android:label="Login"
+        tools:layout="@layout/fragment_login">
+
+        <action
+            android:id="@+id/action_loginFragment_to_signUpFragment"
+            app:destination="@id/signUpFragment"
+            app:enterAnim="@android:anim/slide_in_left"
+            app:exitAnim="@android:anim/slide_out_right" />
+
+        <action
+            android:id="@+id/action_loginFragment_to_profileFragment"
+            app:destination="@id/profileFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="false"
+            app:enterAnim="@android:anim/fade_in"
+            app:exitAnim="@android:anim/fade_out" />
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/signUpFragment"
+        android:name="com.blueroots.carbonregistry.ui.auth.SignUpFragment"
+        android:label="Sign Up"
+        tools:layout="@layout/fragment_signup">
+
+        <action
+            android:id="@+id/action_signUpFragment_to_profileFragment"
+            app:destination="@id/profileFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="false"
+            app:enterAnim="@android:anim/fade_in"
+            app:exitAnim="@android:anim/fade_out" />
+
+    </fragment>
+
+    <!-- Main App Flow -->
+    <fragment
+        android:id="@+id/projectRegistrationFragment"
+        android:name="com.blueroots.carbonregistry.ui.registration.ProjectRegistrationFragment"
+        android:label="Register Project"
+        tools:layout="@layout/fragment_project_registration" />
+
+    <fragment
+        android:id="@+id/monitoringUploadFragment"
+        android:name="com.blueroots.carbonregistry.ui.monitoring.MonitoringUploadFragment"
+        android:label="Monitor"
+        tools:layout="@layout/fragment_monitoring_upload" />
+
+    <fragment
+        android:id="@+id/creditIssuanceFragment"
+        android:name="com.blueroots.carbonregistry.ui.credits.CreditIssuanceFragment"
+        android:label="Credits"
+        tools:layout="@layout/fragment_credit_issuance" />
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.blueroots.carbonregistry.ui.profile.ProfileFragment"
+        android:label="Profile"
+        tools:layout="@layout/fragment_profile" />
+
+</navigation>

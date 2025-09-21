@@ -4,20 +4,26 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
+import com.blueroots.carbonregistry.R
 import com.blueroots.carbonregistry.databinding.FragmentSignupBinding
 import com.blueroots.carbonregistry.viewmodel.AuthViewModel
-import com.blueroots.carbonregistry.viewmodel.AuthStatus
+import com.google.android.material.snackbar.Snackbar
 
 class SignUpFragment : Fragment() {
+
     private var _binding: FragmentSignupBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var authViewModel: AuthViewModel
+    private val authViewModel: AuthViewModel by activityViewModels()
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentSignupBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -25,83 +31,55 @@ class SignUpFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        authViewModel = ViewModelProvider(this)[AuthViewModel::class.java]
-
-        setupUI()
+        setupClickListeners()
         observeViewModel()
     }
 
-    private fun setupUI() {
-        binding.buttonSignUp.setOnClickListener {
-            val name = binding.editName.text.toString().trim()
-            val email = binding.editEmail.text.toString().trim()
-            val password = binding.editPassword.text.toString().trim()
-            val confirmPassword = binding.editConfirmPassword.text.toString().trim()
-
-            if (validateInput(name, email, password, confirmPassword)) {
-                authViewModel.signUp(name, email, password)
+    private fun setupClickListeners() {
+        binding.apply {
+            buttonSignUp.setOnClickListener {
+                val email = editTextEmail.text.toString().trim()
+                val password = editTextPassword.text.toString().trim()
+                val confirmPassword = editTextConfirmPassword.text.toString().trim()
+                authViewModel.signUp(email, password, confirmPassword)
             }
-        }
 
-        binding.textSignIn.setOnClickListener {
-            // Navigate back to LoginFragment
-            parentFragmentManager.popBackStack()
+            textViewLogin.setOnClickListener {
+                findNavController().navigateUp()
+            }
         }
     }
 
     private fun observeViewModel() {
-        authViewModel.signUpStatus.observe(viewLifecycleOwner) { status ->
-            when (status) {
-                is AuthStatus.Loading -> {
-                    binding.buttonSignUp.isEnabled = false
-                    binding.progressSignUp.visibility = View.VISIBLE
-                }
-                is AuthStatus.Success -> {
-                    binding.buttonSignUp.isEnabled = true
-                    binding.progressSignUp.visibility = View.GONE
-                    Toast.makeText(requireContext(), "Account created successfully!", Toast.LENGTH_SHORT).show()
-                    // Navigate back to login
-                    parentFragmentManager.popBackStack()
-                }
-                is AuthStatus.Error -> {
-                    binding.buttonSignUp.isEnabled = true
-                    binding.progressSignUp.visibility = View.GONE
-                    Toast.makeText(requireContext(), "Error: ${status.message}", Toast.LENGTH_LONG).show()
+        authViewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.apply {
+                buttonSignUp.isEnabled = !isLoading
+                progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+
+                if (isLoading) {
+                    buttonSignUp.text = ""
+                } else {
+                    buttonSignUp.text = getString(R.string.sign_up)
                 }
             }
         }
-    }
 
-    private fun validateInput(name: String, email: String, password: String, confirmPassword: String): Boolean {
-        if (name.isEmpty()) {
-            binding.editName.error = "Full name is required"
-            return false
+        authViewModel.signUpResult.observe(viewLifecycleOwner) { result ->
+            when (result) {
+                is AuthViewModel.AuthResult.Success -> {
+                    Snackbar.make(binding.root, result.message, Snackbar.LENGTH_SHORT).show()
+                    // Navigate to profile only if we're currently on the signup fragment
+                    if (findNavController().currentDestination?.id == R.id.signUpFragment) {
+                        findNavController().navigate(R.id.action_signUpFragment_to_profileFragment)
+                    }
+                }
+                is AuthViewModel.AuthResult.Error -> {
+                    Snackbar.make(binding.root, result.message, Snackbar.LENGTH_LONG).show()
+                }
+            }
         }
-        if (email.isEmpty()) {
-            binding.editEmail.error = "Email is required"
-            return false
-        }
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            binding.editEmail.error = "Please enter a valid email"
-            return false
-        }
-        if (password.isEmpty()) {
-            binding.editPassword.error = "Password is required"
-            return false
-        }
-        if (password.length < 6) {
-            binding.editPassword.error = "Password must be at least 6 characters"
-            return false
-        }
-        if (confirmPassword.isEmpty()) {
-            binding.editConfirmPassword.error = "Please confirm your password"
-            return false
-        }
-        if (password != confirmPassword) {
-            binding.editConfirmPassword.error = "Passwords do not match"
-            return false
-        }
-        return true
+
+        // Remove the isLoggedIn observer from here since it causes the navigation issue
     }
 
     override fun onDestroyView() {

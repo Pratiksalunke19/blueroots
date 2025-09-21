@@ -4,20 +4,26 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
+import com.blueroots.carbonregistry.R
 import com.blueroots.carbonregistry.databinding.FragmentLoginBinding
 import com.blueroots.carbonregistry.viewmodel.AuthViewModel
-import com.blueroots.carbonregistry.viewmodel.AuthStatus // ADD THIS IMPORT
+import com.google.android.material.snackbar.Snackbar
 
 class LoginFragment : Fragment() {
+
     private var _binding: FragmentLoginBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var authViewModel: AuthViewModel
+    private val authViewModel: AuthViewModel by activityViewModels()
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentLoginBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -25,72 +31,54 @@ class LoginFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        authViewModel = ViewModelProvider(this)[AuthViewModel::class.java]
-
-        setupUI()
+        setupClickListeners()
         observeViewModel()
     }
 
-    private fun setupUI() {
-        binding.buttonLogin.setOnClickListener {
-            val email = binding.editEmail.text.toString().trim()
-            val password = binding.editPassword.text.toString().trim()
-
-            if (validateInput(email, password)) {
+    private fun setupClickListeners() {
+        binding.apply {
+            buttonLogin.setOnClickListener {
+                val email = editTextEmail.text.toString().trim()
+                val password = editTextPassword.text.toString().trim()
                 authViewModel.login(email, password)
             }
-        }
 
-        binding.textSignUp.setOnClickListener {
-            // Navigate to SignUpFragment
-            parentFragmentManager.beginTransaction()
-                .replace(android.R.id.content, SignUpFragment())
-                .addToBackStack(null)
-                .commit()
-        }
-
-        binding.textForgotPassword.setOnClickListener {
-            // Handle forgot password
-            Toast.makeText(requireContext(), "Forgot password coming soon", Toast.LENGTH_SHORT).show()
+            textViewSignUp.setOnClickListener {
+                findNavController().navigate(R.id.action_loginFragment_to_signUpFragment)
+            }
         }
     }
 
     private fun observeViewModel() {
-        authViewModel.loginStatus.observe(viewLifecycleOwner) { status ->
-            when (status) {
-                is AuthStatus.Loading -> {
-                    binding.buttonLogin.isEnabled = false
-                    binding.progressLogin.visibility = View.VISIBLE
-                }
-                is AuthStatus.Success -> {
-                    binding.buttonLogin.isEnabled = true
-                    binding.progressLogin.visibility = View.GONE
-                    Toast.makeText(requireContext(), "Login successful!", Toast.LENGTH_SHORT).show()
-                    // Navigate to MainActivity
-                }
-                is AuthStatus.Error -> {
-                    binding.buttonLogin.isEnabled = true
-                    binding.progressLogin.visibility = View.GONE
-                    Toast.makeText(requireContext(), "Error: ${status.message}", Toast.LENGTH_LONG).show()
+        authViewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.apply {
+                buttonLogin.isEnabled = !isLoading
+                progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+
+                if (isLoading) {
+                    buttonLogin.text = ""
+                } else {
+                    buttonLogin.text = getString(R.string.login)
                 }
             }
         }
-    }
 
-    private fun validateInput(email: String, password: String): Boolean {
-        if (email.isEmpty()) {
-            binding.editEmail.error = "Email is required"
-            return false
+        authViewModel.loginResult.observe(viewLifecycleOwner) { result ->
+            when (result) {
+                is AuthViewModel.AuthResult.Success -> {
+                    Snackbar.make(binding.root, result.message, Snackbar.LENGTH_SHORT).show()
+                    // Navigate to profile only if we're currently on the login fragment
+                    if (findNavController().currentDestination?.id == R.id.loginFragment) {
+                        findNavController().navigate(R.id.action_loginFragment_to_profileFragment)
+                    }
+                }
+                is AuthViewModel.AuthResult.Error -> {
+                    Snackbar.make(binding.root, result.message, Snackbar.LENGTH_LONG).show()
+                }
+            }
         }
-        if (password.isEmpty()) {
-            binding.editPassword.error = "Password is required"
-            return false
-        }
-        if (password.length < 6) {
-            binding.editPassword.error = "Password must be at least 6 characters"
-            return false
-        }
-        return true
+
+        // Remove the isLoggedIn observer from here since it causes the navigation issue
     }
 
     override fun onDestroyView() {

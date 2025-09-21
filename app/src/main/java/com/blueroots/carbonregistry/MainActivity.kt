@@ -1,87 +1,85 @@
 package com.blueroots.carbonregistry
 
 import android.os.Bundle
-import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.fragment.app.Fragment
+import androidx.navigation.NavController
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.setupWithNavController
 import com.blueroots.carbonregistry.databinding.ActivityMainBinding
-import com.blueroots.carbonregistry.ui.registration.ProjectRegistrationFragment
-import com.blueroots.carbonregistry.ui.monitoring.MonitoringUploadFragment
-import com.blueroots.carbonregistry.ui.credits.CreditIssuanceFragment
-import com.blueroots.carbonregistry.ui.profile.ProfileFragment
+import com.blueroots.carbonregistry.viewmodel.AuthViewModel
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
+
     private lateinit var binding: ActivityMainBinding
+    private lateinit var navController: NavController
+    private val authViewModel: AuthViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // IMPORTANT: Install splash screen before super.onCreate()
         installSplashScreen()
 
+        // Apply theme before creating UI
+        applyTheme()
+
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Set default fragment
-        if (savedInstanceState == null) {
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, ProjectRegistrationFragment())
-                .commit()
-        }
-
-        setupBottomNavigation()
-        // REMOVED setupToolbar() temporarily
+        setupNavigation()
+        observeAuthState()
     }
 
-    // COMMENTED OUT TOOLBAR SETUP FOR NOW
-    /*
-    private fun setupToolbar() {
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.title = "BlueRoots"
-    }
+    private fun applyTheme() {
+        val sharedPrefs = getSharedPreferences("theme_prefs", MODE_PRIVATE)
+        val isDarkMode = sharedPrefs.getBoolean("dark_mode", false)
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.toolbar_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_notifications -> {
-                Toast.makeText(this, "Notifications", Toast.LENGTH_SHORT).show()
-                true
-            }
-            R.id.action_search -> {
-                Toast.makeText(this, "Search", Toast.LENGTH_SHORT).show()
-                true
-            }
-            R.id.action_more -> {
-                Toast.makeText(this, "More options", Toast.LENGTH_SHORT).show()
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
+        if (isDarkMode) {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+        } else {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         }
     }
-    */
 
-    private fun setupBottomNavigation() {
-        binding.bottomNavigation.setOnItemSelectedListener { item ->
-            val fragment: Fragment = when (item.itemId) {
-                R.id.nav_registration -> ProjectRegistrationFragment()
-                R.id.nav_monitoring -> MonitoringUploadFragment()
-                R.id.nav_credits -> CreditIssuanceFragment()
-                R.id.nav_profile -> ProfileFragment()
-                else -> ProjectRegistrationFragment()
+    private fun setupNavigation() {
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        navController = navHostFragment.navController
+
+        val bottomNav: BottomNavigationView = binding.bottomNavigation
+        bottomNav.setupWithNavController(navController)
+
+        // Handle bottom nav visibility based on current destination
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            when (destination.id) {
+                R.id.loginFragment, R.id.signUpFragment -> {
+                    bottomNav.visibility = BottomNavigationView.GONE
+                }
+                else -> {
+                    bottomNav.visibility = BottomNavigationView.VISIBLE
+                }
             }
+        }
+    }
 
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, fragment)
-                .commit()
+    private fun observeAuthState() {
+        authViewModel.isLoggedIn.observe(this) { isLoggedIn ->
+            val currentDestination = navController.currentDestination?.id
 
-            true
+            if (!isLoggedIn) {
+                // Only navigate to login if not already on auth screens
+                if (currentDestination != R.id.loginFragment && currentDestination != R.id.signUpFragment) {
+                    navController.navigate(R.id.loginFragment)
+                }
+            } else {
+                // User is logged in - navigate to profile if on auth screens
+                if (currentDestination == R.id.loginFragment || currentDestination == R.id.signUpFragment) {
+                    navController.navigate(R.id.profileFragment)
+                }
+            }
         }
     }
 }
