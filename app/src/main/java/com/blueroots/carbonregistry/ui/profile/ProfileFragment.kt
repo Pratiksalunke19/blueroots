@@ -43,6 +43,10 @@ class ProfileFragment : Fragment() {
         setupMenu()
         setupClickListeners()
         setupThemeSwitch()
+        observeViewModel()
+
+        // Load fresh profile data
+        authViewModel.refreshUserProfile()
     }
 
     private fun setupMenu() {
@@ -72,6 +76,11 @@ class ProfileFragment : Fragment() {
             buttonSettings.setOnClickListener {
                 // TODO: Navigate to settings screen
             }
+
+            // Add sign out button click listener
+            buttonSignOut.setOnClickListener {
+                showLogoutDialog()
+            }
         }
     }
 
@@ -85,13 +94,59 @@ class ProfileFragment : Fragment() {
         }
     }
 
+    private fun observeViewModel() {
+        // Observe authentication state
+        authViewModel.isLoggedIn.observe(viewLifecycleOwner) { isLoggedIn ->
+            if (!isLoggedIn) {
+                // User has been logged out, navigate to login
+                findNavController().navigate(R.id.action_profileFragment_to_loginFragment)
+            }
+        }
+
+        // Observe user profile data
+        authViewModel.userProfile.observe(viewLifecycleOwner) { profile ->
+            profile?.let { updateProfileUI(it) }
+        }
+
+        // Observe current auth user
+        authViewModel.authState.observe(viewLifecycleOwner) { user ->
+            user?.let { updateUserInfo(it) }
+        }
+    }
+
+    private fun updateUserInfo(user: com.blueroots.carbonregistry.data.models.AuthUser) {
+        binding.apply {
+            textViewName.text = user.fullName.ifBlank { "User" }
+            textViewEmail.text = user.email
+
+            // Update verification status
+            if (user.isVerified) {
+                chipRole.text = "Verified ${user.organizationType}"
+                chipRole.setChipBackgroundColorResource(R.color.status_ready)
+            } else {
+                chipRole.text = "Unverified Account"
+                chipRole.setChipBackgroundColorResource(R.color.status_warning)
+            }
+        }
+    }
+
+    private fun updateProfileUI(profile: com.blueroots.carbonregistry.data.models.UserProfile) {
+        binding.apply {
+            textViewName.text = profile.fullName ?: "User"
+            textViewEmail.text = profile.email
+
+            profile.organizationType?.let { orgType ->
+                chipRole.text = if (profile.isVerified) "Verified $orgType" else orgType
+            }
+        }
+    }
+
     private fun showLogoutDialog() {
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Logout")
-            .setMessage("Are you sure you want to logout?")
-            .setPositiveButton("Logout") { _, _ ->
+            .setTitle("Sign Out")
+            .setMessage("Are you sure you want to sign out?")
+            .setPositiveButton("Sign Out") { _, _ ->
                 authViewModel.logout()
-                // The MainActivity will handle navigation to login via auth state observer
             }
             .setNegativeButton("Cancel", null)
             .show()

@@ -319,8 +319,8 @@
                 android:id="@+id/buttonEditProfile"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingRight="50dp"
                 android:layout_marginBottom="8dp"
+                android:paddingEnd="50dp"
                 android:text="Edit Profile"
                 app:icon="@drawable/ic_edit_24"
                 style="@style/Widget.Material3.Button.TonalButton" />
@@ -329,10 +329,21 @@
                 android:id="@+id/buttonSettings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingRight="50dp"
+                android:paddingStart="50dp"
                 android:text="Settings"
                 app:icon="@drawable/ic_settings_24"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonSignOut"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Sign Out"
+                app:icon="@drawable/ic_logout_24"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                app:strokeColor="@color/status_error"
+                android:textColor="@color/status_error" />
 
         </LinearLayout>
 

@@ -33,6 +33,13 @@ class LoginFragment : Fragment() {
 
         setupClickListeners()
         observeViewModel()
+
+        // Check if user is already logged in
+        authViewModel.isLoggedIn.observe(viewLifecycleOwner) { isLoggedIn ->
+            if (isLoggedIn && findNavController().currentDestination?.id == R.id.loginFragment) {
+                findNavController().navigate(R.id.action_loginFragment_to_profileFragment)
+            }
+        }
     }
 
     private fun setupClickListeners() {
@@ -56,7 +63,7 @@ class LoginFragment : Fragment() {
                 progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
 
                 if (isLoading) {
-                    buttonLogin.text = ""
+                    buttonLogin.text = "Signing In..."
                 } else {
                     buttonLogin.text = getString(R.string.login)
                 }
@@ -67,18 +74,13 @@ class LoginFragment : Fragment() {
             when (result) {
                 is AuthViewModel.AuthResult.Success -> {
                     Snackbar.make(binding.root, result.message, Snackbar.LENGTH_SHORT).show()
-                    // Navigate to profile only if we're currently on the login fragment
-                    if (findNavController().currentDestination?.id == R.id.loginFragment) {
-                        findNavController().navigate(R.id.action_loginFragment_to_profileFragment)
-                    }
+                    // Navigation will be handled by isLoggedIn observer
                 }
                 is AuthViewModel.AuthResult.Error -> {
                     Snackbar.make(binding.root, result.message, Snackbar.LENGTH_LONG).show()
                 }
             }
         }
-
-        // Remove the isLoggedIn observer from here since it causes the navigation issue
     }
 
     override fun onDestroyView() {

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
@@ -31,8 +32,25 @@ class SignUpFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupDropdowns()
         setupClickListeners()
         observeViewModel()
+    }
+
+    private fun setupDropdowns() {
+        // Organization type dropdown
+        val organizationTypes = listOf(
+            "Private Company",
+            "NGO",
+            "Government Agency",
+            "Research Institution",
+            "Community Organization",
+            "International Organization"
+        )
+
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, organizationTypes)
+        // Assuming you have a dropdown for organization type in your layout
+        // binding.dropdownOrganizationType.setAdapter(adapter)
     }
 
     private fun setupClickListeners() {
@@ -41,7 +59,11 @@ class SignUpFragment : Fragment() {
                 val email = editTextEmail.text.toString().trim()
                 val password = editTextPassword.text.toString().trim()
                 val confirmPassword = editTextConfirmPassword.text.toString().trim()
-                authViewModel.signUp(email, password, confirmPassword)
+                val fullName = editTextFullName.text.toString().trim()
+                val organizationName = editTextOrganizationName.text.toString().trim()
+                val organizationType = "Private Company" // Default or from dropdown
+
+                authViewModel.signUp(email, password, confirmPassword, fullName, organizationName, organizationType)
             }
 
             textViewLogin.setOnClickListener {
@@ -57,7 +79,7 @@ class SignUpFragment : Fragment() {
                 progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
 
                 if (isLoading) {
-                    buttonSignUp.text = ""
+                    buttonSignUp.text = "Creating Account..."
                 } else {
                     buttonSignUp.text = getString(R.string.sign_up)
                 }
@@ -67,19 +89,15 @@ class SignUpFragment : Fragment() {
         authViewModel.signUpResult.observe(viewLifecycleOwner) { result ->
             when (result) {
                 is AuthViewModel.AuthResult.Success -> {
-                    Snackbar.make(binding.root, result.message, Snackbar.LENGTH_SHORT).show()
-                    // Navigate to profile only if we're currently on the signup fragment
-                    if (findNavController().currentDestination?.id == R.id.signUpFragment) {
-                        findNavController().navigate(R.id.action_signUpFragment_to_profileFragment)
-                    }
+                    Snackbar.make(binding.root, result.message, Snackbar.LENGTH_LONG).show()
+                    // Don't navigate - user needs to verify email first
+                    findNavController().navigateUp() // Go back to login
                 }
                 is AuthViewModel.AuthResult.Error -> {
                     Snackbar.make(binding.root, result.message, Snackbar.LENGTH_LONG).show()
                 }
             }
         }
-
-        // Remove the isLoggedIn observer from here since it causes the navigation issue
     }
 
     override fun onDestroyView() {

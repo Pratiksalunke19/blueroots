@@ -83,4 +83,18 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.3.4")
     implementation("androidx.camera:camera-lifecycle:1.3.4")
     implementation("androidx.camera:camera-view:1.3.4")
+
+    // Supabase
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.6.0")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.6.0")
+    implementation("io.github.jan-tennert.supabase:realtime-kt:2.6.0")
+    implementation("io.github.jan-tennert.supabase:storage-kt:2.6.0")
+
+    // Ktor for networking (required by Supabase)
+    implementation("io.ktor:ktor-client-android:2.3.5")
+    implementation("io.ktor:ktor-client-core:2.3.5")
+    implementation("io.ktor:ktor-utils:2.3.5")
+
+    // Kotlinx Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }
