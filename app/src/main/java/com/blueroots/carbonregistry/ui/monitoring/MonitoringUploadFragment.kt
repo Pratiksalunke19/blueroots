@@ -316,7 +316,8 @@ class MonitoringUploadFragment : Fragment() {
                 isFormComplete -> {
                     textViewStatus.text = "Status: Complete Quality Checks"
                     textViewStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_warning))
-                    buttonUploadData.isEnabled = false
+                    // CHANGED: Allow upload even without all quality checks completed
+                    buttonUploadData.isEnabled = true
                 }
                 else -> {
                     textViewStatus.text = "Status: Incomplete Data"
@@ -339,9 +340,9 @@ class MonitoringUploadFragment : Fragment() {
 
     private fun areQualityChecksComplete(): Boolean {
         binding.apply {
-            return chipDataComplete.isChecked &&
-                    chipGPSAccurate.isChecked &&
-                    (selectedPhotos.isNotEmpty() || !chipPhotosAttached.isChecked)
+            // CHANGED: Made quality checks more flexible
+            // Only require data complete check, others are optional
+            return chipDataComplete.isChecked
         }
     }
 
@@ -499,7 +500,8 @@ class MonitoringUploadFragment : Fragment() {
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            binding.buttonUploadData.isEnabled = !isLoading && areQualityChecksComplete()
+            // CHANGED: Only disable during loading, not based on quality checks
+            binding.buttonUploadData.isEnabled = !isLoading && isFormComplete()
             binding.buttonUploadData.text = if (isLoading) "Uploading..." else "Upload Monitoring Data"
         }
     }
