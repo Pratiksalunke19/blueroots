@@ -13,22 +13,21 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import com.blueroots.carbonregistry.R
 import com.blueroots.carbonregistry.data.blockchain.HederaTransactionResult
 import com.blueroots.carbonregistry.data.models.*
 import com.blueroots.carbonregistry.databinding.FragmentProjectRegistrationBinding
 import com.blueroots.carbonregistry.viewmodel.ProjectRegistrationViewModel
+import com.blueroots.carbonregistry.viewmodel.CreditViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.UUID
-import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.findNavController
-import com.blueroots.carbonregistry.viewmodel.CreditViewModel
-import com.blueroots.carbonregistry.data.models.EcosystemType
 
 class ProjectRegistrationFragment : Fragment() {
 
@@ -36,9 +35,11 @@ class ProjectRegistrationFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: ProjectRegistrationViewModel by viewModels()
+    // Use activityViewModels to share the same CreditViewModel instance
+    private val creditViewModel: CreditViewModel by activityViewModels()
+
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-
     private var selectedStartDate: Calendar = Calendar.getInstance()
 
     // Location permission launcher
@@ -75,30 +76,6 @@ class ProjectRegistrationFragment : Fragment() {
         setupDropdowns()
         setupClickListeners()
         observeViewModel()
-
-        viewModel.registrationStatus.observe(viewLifecycleOwner) { status ->
-            // Show status in a Snackbar or Dialog
-            Snackbar.make(binding.root, status, Snackbar.LENGTH_LONG).show()
-        }
-        viewModel.blockchainRegistration.observe(viewLifecycleOwner) { result ->
-            result?.let {
-                // Show transaction details dialog
-                showTransactionDialog(it)
-            }
-        }
-    }
-
-    private fun showTransactionDialog(result: HederaTransactionResult) {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Blockchain Transaction Successful")
-            .setMessage("""
-            Transaction ID: ${result.transactionId}
-            Consensus Time: ${result.consensusTimestamp}
-            Status: ${result.status}
-            Network Fee: ${result.fee}
-        """.trimIndent())
-            .setPositiveButton("OK", null)
-            .show()
     }
 
     private fun setupDropdowns() {
@@ -188,7 +165,7 @@ class ProjectRegistrationFragment : Fragment() {
                     location?.let {
                         binding.editTextLatitude.setText(String.format("%.6f", it.latitude))
                         binding.editTextLongitude.setText(String.format("%.6f", it.longitude))
-                        Snackbar.make(binding.root, "Location captured successfully", Snackbar.LENGTH_SHORT).show()
+                        Snackbar.make(binding.root, "📍 Location captured successfully", Snackbar.LENGTH_SHORT).show()
                     } ?: run {
                         Snackbar.make(binding.root, "Unable to get current location", Snackbar.LENGTH_LONG).show()
                     }
@@ -308,41 +285,18 @@ class ProjectRegistrationFragment : Fragment() {
     private fun submitProject() {
         val projectRegistration = createProjectFromForm()
 
-        // Convert ProjectRegistration to Map<String, Any>
-        val projectData = projectRegistrationToMap(projectRegistration)
+        // Show immediate feedback
+        Snackbar.make(binding.root, "Submitting project to Hedera blockchain...", Snackbar.LENGTH_LONG).show()
 
-        // Submit to viewModel (if you have a submitProject method that takes Map)
-        // viewModel.submitProject(projectData)
+        // Disable submit button to prevent double submission
+        binding.buttonSubmitProject.isEnabled = false
+        binding.buttonSubmitProject.text = "Submitting to Blockchain..."
 
-        // Trigger credit issuance demo
+        // Trigger blockchain credit issuance demo
         triggerCreditIssuanceDemo(projectRegistration)
     }
 
-    private fun projectRegistrationToMap(project: ProjectRegistration): Map<String, Any> {
-        return mapOf(
-            "id" to (project.id ?: UUID.randomUUID().toString()),
-            "name" to (project.projectName ?: ""),
-            "description" to (project.projectDescription ?: ""),
-            // Combine location fields into a single location string
-            "location" to "${project.nearestCity}, ${project.district}, ${project.state}, ${project.country}".trim().removeSuffix(","),
-            "latitude" to project.latitude,
-            "longitude" to project.longitude,
-            "country" to project.country,
-            "state" to project.state,
-            "district" to project.district,
-            "nearestCity" to project.nearestCity,
-            "area" to project.projectArea, // Use projectArea instead of area
-            "ecosystemType" to (project.projectType.name ?: "MANGROVE"),
-            "startDate" to (project.startDate?.toString() ?: ""),
-            "endDate" to (project.endDate?.toString() ?: ""),
-            "methodology" to (project.methodology ?: ""),
-            "expectedCredits" to (project.expectedCreditGeneration ?: 0.0)
-        )
-    }
-
     private fun triggerCreditIssuanceDemo(project: ProjectRegistration) {
-        val creditViewModel = ViewModelProvider(requireActivity())[CreditViewModel::class.java]
-
         // Create a proper location string
         val locationString = listOf(
             project.nearestCity,
@@ -351,21 +305,28 @@ class ProjectRegistrationFragment : Fragment() {
             project.country
         ).filter { it.isNotBlank() }.joinToString(", ")
 
+        // Add logging for debugging
+        println("🔧 DEBUG: Triggering credit issuance for project: ${project.projectName}")
+        println("🔧 DEBUG: Area: ${project.projectArea}, Type: ${project.projectType}")
+
         creditViewModel.processProjectReviewAndIssueCredits(
             projectId = project.id ?: UUID.randomUUID().toString(),
             projectName = project.projectName ?: "Unnamed Project",
-            area = project.projectArea, // Use projectArea
-            ecosystemType = project.projectType ?: EcosystemType.MANGROVE,
+            area = project.projectArea,
+            ecosystemType = project.projectType,
             location = locationString.ifBlank { "Unknown Location" }
         )
 
+        // Show success message and navigate to credits
         Snackbar.make(binding.root, "Project submitted to Hedera blockchain!", Snackbar.LENGTH_LONG)
-            .setAction("View Credits") {
-                // Use the correct navigation ID
-                findNavController().navigate(R.id.creditIssuanceFragment)
-            }.show()
-    }
+            .show()
 
+        // Re-enable submit button after delay
+        binding.buttonSubmitProject.postDelayed({
+            binding.buttonSubmitProject.isEnabled = true
+            binding.buttonSubmitProject.text = "Submit Project for Review"
+        }, 3000)
+    }
 
     private fun createProjectFromForm(): ProjectRegistration {
         binding.apply {
@@ -455,18 +416,29 @@ class ProjectRegistrationFragment : Fragment() {
         viewModel.submissionResult.observe(viewLifecycleOwner) { result ->
             when (result) {
                 is ProjectRegistrationViewModel.SubmissionResult.Success -> {
-                    Snackbar.make(binding.root, "Project submitted successfully!", Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(binding.root, "Project submitted successfully to Hedera!", Snackbar.LENGTH_LONG).show()
                     clearForm()
                 }
                 is ProjectRegistrationViewModel.SubmissionResult.Error -> {
                     Snackbar.make(binding.root, "Error: ${result.message}", Snackbar.LENGTH_LONG).show()
+                    binding.buttonSubmitProject.isEnabled = true
+                    binding.buttonSubmitProject.text = "Submit Project for Review"
                 }
             }
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            binding.buttonSubmitProject.isEnabled = !isLoading
-            binding.buttonSubmitProject.text = if (isLoading) "Submitting..." else "Submit Project for Review"
+            if (!isLoading) {
+                binding.buttonSubmitProject.isEnabled = true
+                binding.buttonSubmitProject.text = "Submit Project for Review"
+            }
+        }
+
+        // Observe blockchain status from CreditViewModel
+        creditViewModel.blockchainStatus.observe(viewLifecycleOwner) { status ->
+            if (status.isNotEmpty()) {
+                Snackbar.make(binding.root, status, Snackbar.LENGTH_SHORT).show()
+            }
         }
     }
 
