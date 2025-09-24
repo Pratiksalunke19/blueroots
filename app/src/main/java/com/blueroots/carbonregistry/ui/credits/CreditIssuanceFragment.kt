@@ -12,6 +12,7 @@ import com.blueroots.carbonregistry.R
 import com.blueroots.carbonregistry.data.blockchain.HederaTransactionResult
 import com.blueroots.carbonregistry.data.models.CarbonCredit
 import com.blueroots.carbonregistry.data.models.CreditStatus
+import com.blueroots.carbonregistry.data.storage.PortfolioStats
 import com.blueroots.carbonregistry.databinding.FragmentCreditIssuanceBinding
 import com.blueroots.carbonregistry.ui.adapters.CreditAdapter
 import com.blueroots.carbonregistry.viewmodel.CreditViewModel
@@ -128,10 +129,20 @@ class CreditIssuanceFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        // Observe credit list changes
+        // Observe credit list changes - this will automatically update when SharedPreferences change
         viewModel.creditList.observe(viewLifecycleOwner) { credits ->
             creditAdapter.updateCredits(credits)
+        }
+
+        // Use filtered credits if filtering is active
+        viewModel.filteredCredits.observe(viewLifecycleOwner) { credits ->
+            creditAdapter.updateCredits(credits)
             updatePortfolioStats(credits)
+        }
+
+        // Observe portfolio stats
+        viewModel.portfolioStats.observe(viewLifecycleOwner) { stats ->
+            updatePortfolioStatsUI(stats)
         }
 
         // Observe blockchain status
@@ -174,6 +185,15 @@ class CreditIssuanceFragment : Fragment() {
             error?.let {
                 Snackbar.make(binding.root, it, Snackbar.LENGTH_LONG).show()
             }
+        }
+    }
+
+    private fun updatePortfolioStatsUI(stats: PortfolioStats) {
+        binding.apply {
+            textViewTotalCredits.text = String.format("%.1f", stats.totalCredits)
+            textViewAvailableCredits.text = String.format("%.1f", stats.availableCredits)
+            textViewRetiredCredits.text = String.format("%.1f", stats.retiredCredits)
+            textViewRevenue.text = "$${String.format("%,.0f", stats.totalValue)}"
         }
     }
 
