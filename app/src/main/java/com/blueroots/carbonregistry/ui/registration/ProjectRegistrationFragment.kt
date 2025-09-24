@@ -14,14 +14,21 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import com.blueroots.carbonregistry.R
+import com.blueroots.carbonregistry.data.blockchain.HederaTransactionResult
 import com.blueroots.carbonregistry.data.models.*
 import com.blueroots.carbonregistry.databinding.FragmentProjectRegistrationBinding
 import com.blueroots.carbonregistry.viewmodel.ProjectRegistrationViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.UUID
+import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
+import com.blueroots.carbonregistry.viewmodel.CreditViewModel
+import com.blueroots.carbonregistry.data.models.EcosystemType
 
 class ProjectRegistrationFragment : Fragment() {
 
@@ -68,6 +75,30 @@ class ProjectRegistrationFragment : Fragment() {
         setupDropdowns()
         setupClickListeners()
         observeViewModel()
+
+        viewModel.registrationStatus.observe(viewLifecycleOwner) { status ->
+            // Show status in a Snackbar or Dialog
+            Snackbar.make(binding.root, status, Snackbar.LENGTH_LONG).show()
+        }
+        viewModel.blockchainRegistration.observe(viewLifecycleOwner) { result ->
+            result?.let {
+                // Show transaction details dialog
+                showTransactionDialog(it)
+            }
+        }
+    }
+
+    private fun showTransactionDialog(result: HederaTransactionResult) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Blockchain Transaction Successful")
+            .setMessage("""
+            Transaction ID: ${result.transactionId}
+            Consensus Time: ${result.consensusTimestamp}
+            Status: ${result.status}
+            Network Fee: ${result.fee}
+        """.trimIndent())
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun setupDropdowns() {
@@ -276,8 +307,65 @@ class ProjectRegistrationFragment : Fragment() {
 
     private fun submitProject() {
         val projectRegistration = createProjectFromForm()
-        viewModel.submitProject(projectRegistration)
+
+        // Convert ProjectRegistration to Map<String, Any>
+        val projectData = projectRegistrationToMap(projectRegistration)
+
+        // Submit to viewModel (if you have a submitProject method that takes Map)
+        // viewModel.submitProject(projectData)
+
+        // Trigger credit issuance demo
+        triggerCreditIssuanceDemo(projectRegistration)
     }
+
+    private fun projectRegistrationToMap(project: ProjectRegistration): Map<String, Any> {
+        return mapOf(
+            "id" to (project.id ?: UUID.randomUUID().toString()),
+            "name" to (project.projectName ?: ""),
+            "description" to (project.projectDescription ?: ""),
+            // Combine location fields into a single location string
+            "location" to "${project.nearestCity}, ${project.district}, ${project.state}, ${project.country}".trim().removeSuffix(","),
+            "latitude" to project.latitude,
+            "longitude" to project.longitude,
+            "country" to project.country,
+            "state" to project.state,
+            "district" to project.district,
+            "nearestCity" to project.nearestCity,
+            "area" to project.projectArea, // Use projectArea instead of area
+            "ecosystemType" to (project.projectType.name ?: "MANGROVE"),
+            "startDate" to (project.startDate?.toString() ?: ""),
+            "endDate" to (project.endDate?.toString() ?: ""),
+            "methodology" to (project.methodology ?: ""),
+            "expectedCredits" to (project.expectedCreditGeneration ?: 0.0)
+        )
+    }
+
+    private fun triggerCreditIssuanceDemo(project: ProjectRegistration) {
+        val creditViewModel = ViewModelProvider(requireActivity())[CreditViewModel::class.java]
+
+        // Create a proper location string
+        val locationString = listOf(
+            project.nearestCity,
+            project.district,
+            project.state,
+            project.country
+        ).filter { it.isNotBlank() }.joinToString(", ")
+
+        creditViewModel.processProjectReviewAndIssueCredits(
+            projectId = project.id ?: UUID.randomUUID().toString(),
+            projectName = project.projectName ?: "Unnamed Project",
+            area = project.projectArea, // Use projectArea
+            ecosystemType = project.projectType ?: EcosystemType.MANGROVE,
+            location = locationString.ifBlank { "Unknown Location" }
+        )
+
+        Snackbar.make(binding.root, "Project submitted to Hedera blockchain!", Snackbar.LENGTH_LONG)
+            .setAction("View Credits") {
+                // Use the correct navigation ID
+                findNavController().navigate(R.id.creditIssuanceFragment)
+            }.show()
+    }
+
 
     private fun createProjectFromForm(): ProjectRegistration {
         binding.apply {

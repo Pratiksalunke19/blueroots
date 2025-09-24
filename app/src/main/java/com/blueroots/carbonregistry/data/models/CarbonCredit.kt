@@ -28,29 +28,26 @@ data class CarbonCredit(
     val location: String = "",
     val ecosystemType: EcosystemType = EcosystemType.MANGROVE,
     val createdAt: Date = Date(),
-    val updatedAt: Date = Date()
+    val updatedAt: Date = Date(),
+
+    // Blockchain-specific fields for Hedera integration
+    val transactionHash: String? = null,
+    val verificationHash: String? = null,
+    val blockchainStatus: String = "VERIFIED_ON_HEDERA"
 ) {
-    // Computed property for status display
+    // Computed property for status display (keeping for backward compatibility)
     val statusDisplayName: String
-        get() = when (status) {
-            CreditStatus.PENDING_VERIFICATION -> "Pending Verification"
-            CreditStatus.VERIFIED -> "Verified"
-            CreditStatus.ISSUED -> "Issued"
-            CreditStatus.AVAILABLE -> "Available"
-            CreditStatus.RESERVED -> "Reserved"
-            CreditStatus.TRANSFERRED -> "Transferred"
-            CreditStatus.RETIRED -> "Retired"
-            CreditStatus.CANCELLED -> "Cancelled"
-        }
+        get() = status.displayName
 }
 
-enum class CreditStatus {
-    PENDING_VERIFICATION,
-    VERIFIED,
-    ISSUED,
-    AVAILABLE,
-    RESERVED,
-    TRANSFERRED,
-    RETIRED,
-    CANCELLED
+enum class CreditStatus(val displayName: String) {
+    PENDING_VERIFICATION("Pending Verification"),
+    VERIFIED("Verified"),
+    ISSUED("Issued"),
+    AVAILABLE("Available"),
+    RESERVED("Reserved"),
+    TRANSFERRED("Transferred"),
+    RETIRED("Retired"),
+    CANCELLED("Cancelled")
 }
+

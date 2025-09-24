@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.blueroots.carbonregistry.R
+import com.blueroots.carbonregistry.data.blockchain.HederaTransactionResult
 import com.blueroots.carbonregistry.data.models.CarbonCredit
 import com.blueroots.carbonregistry.data.models.CreditStatus
 import com.blueroots.carbonregistry.databinding.FragmentCreditIssuanceBinding
@@ -40,6 +41,36 @@ class CreditIssuanceFragment : Fragment() {
         setupDropdowns()
         setupClickListeners()
         observeViewModel()
+
+        viewModel.blockchainStatus.observe(viewLifecycleOwner) { status ->
+            if (status.isNotEmpty()) {
+                // Use the correct ID from the XML
+                binding.tvBlockchainStatus.text = status
+                binding.cardBlockchainStatus.visibility = View.VISIBLE
+
+                // Auto-hide after 5 seconds
+                binding.tvBlockchainStatus.postDelayed({
+                    binding.cardBlockchainStatus.visibility = View.GONE
+                }, 5000)
+            } else {
+                binding.cardBlockchainStatus.visibility = View.GONE
+            }
+        }
+
+        viewModel.transactionResult.observe(viewLifecycleOwner) { result ->
+            result?.let {
+                showCreditIssuanceSuccess(it)
+            }
+        }
+
+    }
+
+    private fun showCreditIssuanceSuccess(result: HederaTransactionResult) {
+        Snackbar.make(
+            binding.root,
+            "Credits issued on Hedera! TX: ${result.transactionId.takeLast(10)}...",
+            Snackbar.LENGTH_LONG
+        ).show()
     }
 
     private fun setupRecyclerView() {

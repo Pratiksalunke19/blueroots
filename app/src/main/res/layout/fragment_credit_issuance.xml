@@ -27,6 +27,30 @@
                 android:textColor="?attr/colorOnSurface"
                 android:gravity="center" />
 
+            <!-- Blockchain Status Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_blockchain_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="12dp"
+                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                style="?attr/materialCardViewFilledStyle">
+
+                <TextView
+                    android:id="@+id/tv_blockchain_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="16dp"
+                    android:text=""
+                    android:textSize="14sp"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:drawablePadding="8dp"
+                    android:gravity="center_vertical" />
+
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Summary Cards -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
@@ -316,7 +340,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 tools:itemCount="5"
-                tools:listitem="@layout/item_credit_batch" />
+                tools:listitem="@layout/item_credit" />
 
             <!-- Quick Actions -->
             <com.google.android.material.card.MaterialCardView
@@ -352,7 +376,7 @@
                             android:layout_marginEnd="8dp"
                             android:layout_weight="1"
                             android:text="Request Verification"
-                            app:icon="@drawable/ic_verified_24"
+                            app:icon="@drawable/ic_eco_24"
                             style="@style/Widget.Material3.Button.TonalButton" />
 
                         <com.google.android.material.button.MaterialButton

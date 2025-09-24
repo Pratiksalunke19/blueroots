@@ -9,10 +9,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class CreditAdapter(
-    private val credits: List<CarbonCredit>,
     private val onCreditClick: (CarbonCredit) -> Unit
 ) : RecyclerView.Adapter<CreditAdapter.CreditViewHolder>() {
 
+    private var credits = listOf<CarbonCredit>()
     private val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CreditViewHolder {
@@ -30,26 +30,44 @@ class CreditAdapter(
 
     override fun getItemCount(): Int = credits.size
 
+    /**
+     * Update the credits list and refresh the RecyclerView
+     */
+    fun updateCredits(newCredits: List<CarbonCredit>) {
+        credits = newCredits
+        notifyDataSetChanged()
+    }
+
     inner class CreditViewHolder(
         private val binding: ItemCreditBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(credit: CarbonCredit) {
             binding.apply {
-                // FIXED: Using correct field names from CarbonCredit model
-                textCreditId.text = "ID: ${credit.batchId}" // Using batchId instead of id
-                textAmount.text = "${credit.quantity} tCO2e" // Using quantity instead of amount
-                textStatus.text = "Status: ${credit.statusDisplayName}" // Using statusDisplayName
+                // Basic credit information
+                textCreditId.text = "ID: ${credit.batchId}"
+                textAmount.text = "${credit.quantity} tCO2e"
+                textStatus.text = "Status: ${credit.status}"
+                textIssuedDate.text = "Issued: ${dateFormat.format(credit.issueDate)}"
 
-                // For blockchain transaction hash - using serial numbers or a placeholder
-                textTxHash.text = if (credit.serialNumbers.isNotEmpty()) {
-                    "Serial: ${credit.serialNumbers.first()}"
-                } else {
-                    "Serial: Not assigned"
+                // Blockchain-specific information
+                tvBlockchainStatus.text = when (credit.blockchainStatus) {
+                    "VERIFIED_ON_HEDERA" -> "✓ Verified on Hedera"
+                    "PENDING_ON_HEDERA" -> "⏳ Pending on Hedera"
+                    "RETIRED_ON_HEDERA" -> "♻ Retired on Hedera"
+                    "ISSUED_ON_HEDERA" -> "📋 Issued on Hedera"
+                    else -> "🔗 On Hedera Network"
                 }
 
-                // FIXED: Using issueDate instead of issuedDate
-                textIssuedDate.text = "Issued: ${dateFormat.format(credit.issueDate)}"
+                // Transaction hash display
+                tvTransactionHash.text = credit.transactionHash?.let { hash ->
+                    "TX: ${hash.takeLast(12)}..."
+                } ?: "TX: Processing..."
+
+                // Legacy transaction hash (for backward compatibility)
+                textTxHash.text = credit.transactionHash?.let { hash ->
+                    "Tx: ${hash.takeLast(8)}..."
+                } ?: "Tx: Pending"
 
                 // Handle click
                 root.setOnClickListener {

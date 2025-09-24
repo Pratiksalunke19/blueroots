@@ -13,37 +13,83 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- Blockchain Status Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_eco_24"
+                android:tint="?attr/colorPrimary"
+                android:layout_marginEnd="4dp" />
+
+            <TextView
+                android:id="@+id/tv_blockchain_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Verified on Hedera"
+                android:textSize="12sp"
+                android:textColor="?attr/colorPrimary" />
+
+        </LinearLayout>
+
+        <!-- Credit ID -->
         <TextView
             android:id="@+id/textCreditId"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="ID: CR-001"
             android:textSize="14sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
 
+        <!-- Amount -->
         <TextView
             android:id="@+id/textAmount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="50.0 tCO2e"
             android:textSize="18sp"
-            android:textColor="@color/design_default_color_primary" />
+            android:textColor="?attr/colorPrimary"
+            android:layout_marginBottom="4dp" />
 
+        <!-- Status -->
         <TextView
             android:id="@+id/textStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Status: Verified"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:layout_marginBottom="4dp" />
 
+        <!-- Transaction Hash -->
+        <TextView
+            android:id="@+id/tv_transaction_hash"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TX: 0.0.1001@1698..."
+            android:textSize="10sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Legacy Transaction Hash (for backward compatibility) -->
         <TextView
             android:id="@+id/textTxHash"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Tx: 0x123..."
             android:textSize="10sp"
-            android:fontFamily="monospace" />
+            android:fontFamily="monospace"
+            android:visibility="gone" />
 
+        <!-- Issued Date -->
         <TextView
             android:id="@+id/textIssuedDate"
             android:layout_width="match_parent"

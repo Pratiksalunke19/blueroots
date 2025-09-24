@@ -2,6 +2,7 @@ package com.blueroots.carbonregistry
 
 import android.os.Bundle
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -11,6 +12,10 @@ import androidx.navigation.ui.setupWithNavController
 import com.blueroots.carbonregistry.databinding.ActivityMainBinding
 import com.blueroots.carbonregistry.viewmodel.AuthViewModel
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -82,4 +87,58 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    /**
+     * Demo method to simulate project-to-credits flow for blockchain demonstration
+     */
+    fun simulateProjectToCreditsFlow() {
+        lifecycleScope.launch {
+            // Simulate project registration
+            val projectData = mapOf(
+                "name" to "Mangrove Restoration Site #123",
+                "location" to "Sundarbans, West Bengal",
+                "area" to 100,
+                "type" to "Blue Carbon"
+            )
+
+            // Show registration in progress
+            showProgressDialog("Registering project on Hedera...")
+
+            delay(2000)
+
+            // Show success
+            showSuccessDialog("Project registered! TX: 0.0.1001@${System.currentTimeMillis()}")
+
+            delay(1000)
+
+            // Auto-navigate to credits and show new batch
+            navigateToCreditsAndShowNewBatch()
+        }
+    }
+
+    private fun showProgressDialog(message: String) {
+        // Simple implementation using Snackbar instead of dialog
+        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+    }
+
+    private fun showSuccessDialog(message: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Success")
+            .setMessage(message)
+            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
+    private fun navigateToCreditsAndShowNewBatch() {
+        try {
+            // Use the correct navigation ID from your bottom_navigation_menu.xml
+            if (navController.currentDestination?.id != R.id.creditIssuanceFragment) {
+                navController.navigate(R.id.creditIssuanceFragment)
+            }
+        } catch (e: Exception) {
+            // Fallback: show message
+            Snackbar.make(binding.root, "New credits available in Credits tab!", Snackbar.LENGTH_LONG).show()
+        }
+    }
+
 }

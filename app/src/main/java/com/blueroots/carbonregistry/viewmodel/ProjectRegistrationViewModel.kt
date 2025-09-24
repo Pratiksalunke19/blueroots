@@ -7,6 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.blueroots.carbonregistry.data.models.ProjectRegistration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.blueroots.carbonregistry.data.blockchain.MockHederaService
+import com.blueroots.carbonregistry.data.blockchain.HederaTransactionResult
+import kotlin.random.Random
 
 class ProjectRegistrationViewModel : ViewModel() {
 
@@ -19,44 +22,52 @@ class ProjectRegistrationViewModel : ViewModel() {
     // In-memory storage for demo (replace with actual repository/API calls later)
     private val registeredProjects = mutableListOf<ProjectRegistration>()
 
-    fun submitProject(project: ProjectRegistration) {
+    private val hederaService = MockHederaService()
+
+    private val _blockchainRegistration = MutableLiveData<HederaTransactionResult?>()
+    val blockchainRegistration: LiveData<HederaTransactionResult?> = _blockchainRegistration
+
+    private val _registrationStatus = MutableLiveData<String>()
+    val registrationStatus: LiveData<String> = _registrationStatus
+
+    fun submitProject(projectData: Map<String, Any>) {
         viewModelScope.launch {
-            _isLoading.value = true
-
             try {
-                // Simulate API call
-                delay(2000)
+                _registrationStatus.value = "Submitting to Hedera network..."
 
-                // Basic validation
-                if (project.projectName.isBlank()) {
-                    _submissionResult.value = SubmissionResult.Error("Project name is required")
-                    return@launch
-                }
+                // Register project on blockchain
+                val blockchainResult = hederaService.registerProject(projectData)
 
-                if (project.projectArea <= 0) {
-                    _submissionResult.value = SubmissionResult.Error("Project area must be greater than 0")
-                    return@launch
-                }
+                // Update your existing project submission logic here
+                _blockchainRegistration.value = blockchainResult
+                _registrationStatus.value = "Project registered on blockchain: ${blockchainResult.transactionId}"
 
-                if (project.latitude == 0.0 || project.longitude == 0.0) {
-                    _submissionResult.value = SubmissionResult.Error("Valid coordinates are required")
-                    return@launch
-                }
-
-                // Store project (in real app, this would be an API call)
-                registeredProjects.add(project)
-
-                _submissionResult.value = SubmissionResult.Success(
-                    "Project '${project.projectName}' has been submitted for review. " +
-                            "Project ID: ${project.id.substring(0, 8)}..."
-                )
+                // Trigger automatic credit issuance after successful registration
+                triggerCreditIssuance(blockchainResult.transactionId, projectData)
 
             } catch (e: Exception) {
-                _submissionResult.value = SubmissionResult.Error("Failed to submit project: ${e.message}")
-            } finally {
-                _isLoading.value = false
+                _registrationStatus.value = "Registration failed: ${e.message}"
             }
         }
+    }
+
+    private suspend fun triggerCreditIssuance(transactionId: String, projectData: Map<String, Any>) {
+        // Simulate automatic credit calculation based on project data
+        val estimatedCredits = calculateEstimatedCredits(projectData)
+
+        // Issue initial credit batch
+        val creditBatch = hederaService.issueCarbonCreditBatch(
+            projectId = transactionId.substringAfter("@").take(8),
+            creditsAmount = estimatedCredits,
+            verificationData = projectData
+        )
+
+        _registrationStatus.value = "Credits issued: ${creditBatch.batchId} (${creditBatch.credits} credits)"
+    }
+
+    private fun calculateEstimatedCredits(projectData: Map<String, Any>): Int {
+        // Mock calculation - in real app this would be complex
+        return Random.nextInt(50, 500)
     }
 
     fun getRegisteredProjects(): List<ProjectRegistration> {

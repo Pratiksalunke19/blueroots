@@ -20,6 +20,7 @@ data class ProjectRegistration(
 
     // Project Timeline
     val startDate: Date = Date(),
+    val endDate: Date? = null,
     val projectDuration: Int = 0, // in years
     val credatingPeriod: Int = 0, // in years
 
