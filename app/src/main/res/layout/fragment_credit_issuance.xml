@@ -429,15 +429,15 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/buttonRequestVerification"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="8dp"
-                            android:layout_weight="1"
-                            android:text="Request Verification"
-                            app:icon="@drawable/ic_eco_24"
-                            style="@style/Widget.Material3.Button.TonalButton" />
+<!--                        <com.google.android.material.button.MaterialButton-->
+<!--                            android:id="@+id/buttonRequestVerification"-->
+<!--                            android:layout_width="0dp"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:layout_marginEnd="8dp"-->
+<!--                            android:layout_weight="1"-->
+<!--                            android:text="Request Verification"-->
+<!--                            app:icon="@drawable/ic_eco_24"-->
+<!--                            style="@style/Widget.Material3.Button.TonalButton" />-->
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/buttonExportReport"
@@ -484,6 +484,7 @@
                             android:textColor="?attr/colorPrimary" />
 
                         <com.google.android.material.chip.Chip
+                            android:id="@+id/livePrices"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Live Prices"

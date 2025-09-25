@@ -1,6 +1,8 @@
 package com.blueroots.carbonregistry.ui.credits
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -109,11 +111,13 @@ class CreditIssuanceFragment : Fragment() {
         binding.apply {
             buttonRefresh.setOnClickListener { refreshData() }
 
-            buttonRequestVerification.setOnClickListener { requestVerification() }
+//            buttonRequestVerification.setOnClickListener { requestVerification() }
 
             buttonExportReport.setOnClickListener { exportReport() }
 
             buttonViewMarketplace.setOnClickListener { viewMarketplace() }
+
+            livePrices.setOnClickListener{ viewLivePrices() }
 
             // Toggle between credits and monitoring data view
             chipShowCredits.setOnCheckedChangeListener { _, isChecked ->
@@ -507,7 +511,47 @@ class CreditIssuanceFragment : Fragment() {
     }
 
     private fun viewMarketplace() {
-        Snackbar.make(binding.root, "🏪 Opening marketplace...", Snackbar.LENGTH_SHORT).show()
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.carbonmark.com/"))
+            startActivity(intent)
+
+            // Show confirmation message
+            Snackbar.make(
+                binding.root,
+                "Opening marketplace in browser...",
+                Snackbar.LENGTH_SHORT
+            ).show()
+
+        } catch (e: Exception) {
+            // Fallback if no browser available
+            Snackbar.make(
+                binding.root,
+                "Unable to open browser. Please install a web browser.",
+                Snackbar.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private fun viewLivePrices() {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://carboncredits.com/carbon-prices-today/"))
+            startActivity(intent)
+
+            // Show confirmation message
+            Snackbar.make(
+                binding.root,
+                "Opening marketplace in browser...",
+                Snackbar.LENGTH_SHORT
+            ).show()
+
+        } catch (e: Exception) {
+            // Fallback if no browser available
+            Snackbar.make(
+                binding.root,
+                "Unable to open browser. Please install a web browser.",
+                Snackbar.LENGTH_LONG
+            ).show()
+        }
     }
 
     override fun onDestroyView() {
