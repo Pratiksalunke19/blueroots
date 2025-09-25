@@ -1,5 +1,6 @@
 package com.blueroots.carbonregistry.ui.credits
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -34,6 +35,10 @@ class CreditIssuanceFragment : Fragment() {
 
     private lateinit var creditAdapter: CreditAdapter
     private lateinit var monitoringAdapter: MonitoringDataAdapter
+
+    // Add these for tracking shown notifications
+    private val shownNotifications = mutableSetOf<String>()
+    private val PREFS_NAME = "credit_notifications"
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -244,11 +249,17 @@ class CreditIssuanceFragment : Fragment() {
         }
 
         if (recentVerifiedData.isNotEmpty()) {
-            showCreditGenerationOpportunity(recentVerifiedData)
+            // Create unique key for this notification
+            val notificationKey = "credit_generation_${recentVerifiedData.size}_${recentVerifiedData.first().id.take(8)}"
+
+            // Check if this notification was already shown
+            if (!hasNotificationBeenShown(notificationKey)) {
+                showCreditGenerationOpportunity(recentVerifiedData, notificationKey)
+            }
         }
     }
 
-    private fun showCreditGenerationOpportunity(verifiedData: List<MonitoringData>) {
+    private fun showCreditGenerationOpportunity(verifiedData: List<MonitoringData>, notificationKey: String) {
         val potentialCredits = verifiedData.sumOf { data ->
             // Calculate potential credits based on monitoring data
             when (data.dataType) {
@@ -263,9 +274,12 @@ class CreditIssuanceFragment : Fragment() {
         }
 
         if (potentialCredits > 10.0) { // Only show if significant credits can be generated
+            // Mark this notification as shown
+            markNotificationAsShown(notificationKey)
+
             Snackbar.make(
                 binding.root,
-                "🌱 New monitoring data can generate ${potentialCredits.toInt()} credits!",
+                "New monitoring data can generate ${potentialCredits.toInt()} credits!",
                 Snackbar.LENGTH_LONG
             ).setAction("Generate") {
                 generateCreditsFromMonitoring(verifiedData, potentialCredits)
@@ -288,13 +302,19 @@ class CreditIssuanceFragment : Fragment() {
     }
 
     private fun showMonitoringUploadSuccess(message: String) {
-        Snackbar.make(
-            binding.root,
-            "📊 $message",
-            Snackbar.LENGTH_LONG
-        ).setAction("View Impact") {
-            showMonitoringView()
-        }.show()
+        val notificationKey = "upload_success_${System.currentTimeMillis()}"
+
+        if (!hasNotificationBeenShown(notificationKey)) {
+            markNotificationAsShown(notificationKey)
+
+            Snackbar.make(
+                binding.root,
+                "📊 $message",
+                Snackbar.LENGTH_LONG
+            ).setAction("View Impact") {
+                showMonitoringView()
+            }.show()
+        }
     }
 
     private fun refreshData() {
@@ -419,13 +439,50 @@ class CreditIssuanceFragment : Fragment() {
     }
 
     private fun showNewCreditNotification(credit: CarbonCredit) {
-        Snackbar.make(
-            binding.root,
-            "🎉 New batch: ${credit.batchId} (${credit.quantity.toInt()} tCO2e)",
-            Snackbar.LENGTH_LONG
-        ).setAction("View") {
-            binding.recyclerViewCredits.smoothScrollToPosition(0)
-        }.show()
+        val notificationKey = "new_credit_${credit.batchId}"
+
+        if (!hasNotificationBeenShown(notificationKey)) {
+            markNotificationAsShown(notificationKey)
+
+            Snackbar.make(
+                binding.root,
+                "🎉 New batch: ${credit.batchId} (${credit.quantity.toInt()} tCO2e)",
+                Snackbar.LENGTH_LONG
+            ).setAction("View") {
+                binding.recyclerViewCredits.smoothScrollToPosition(0)
+            }.show()
+        }
+    }
+
+    // Helper methods for notification tracking
+    private fun hasNotificationBeenShown(key: String): Boolean {
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(key, false)
+    }
+
+    private fun markNotificationAsShown(key: String) {
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(key, true).apply()
+    }
+
+    // Optional: Method to clear old notifications (call periodically)
+    private fun clearOldNotifications() {
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+
+        // Clear notifications older than 7 days
+        val sevenDaysAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000)
+        val allEntries = prefs.all
+
+        allEntries.keys.forEach { key ->
+            if (key.contains("upload_success_")) {
+                val timestamp = key.substringAfterLast("_").toLongOrNull()
+                if (timestamp != null && timestamp < sevenDaysAgo) {
+                    editor.remove(key)
+                }
+            }
+        }
+        editor.apply()
     }
 
     private fun showTransactionDialog(result: HederaTransactionResult) {

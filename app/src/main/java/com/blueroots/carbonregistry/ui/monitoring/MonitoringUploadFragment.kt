@@ -2,6 +2,7 @@ package com.blueroots.carbonregistry.ui.monitoring
 
 import android.Manifest
 import android.app.DatePickerDialog
+import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.net.Uri
@@ -40,6 +41,10 @@ class MonitoringUploadFragment : Fragment() {
 
     private var selectedMonitoringDate: Calendar = Calendar.getInstance()
     private val selectedPhotos = mutableListOf<MonitoringPhoto>()
+
+    // Notification tracking properties
+    private val PREFS_NAME = "monitoring_upload_notifications"
+    private val shownNotifications = mutableSetOf<String>()
 
     // Camera and gallery launchers
     private val takePictureLauncher = registerForActivityResult(
@@ -89,6 +94,8 @@ class MonitoringUploadFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+        // Clear old notifications on fragment creation
+        clearOldNotifications()
 
         setupRecyclerView()
         setupDropdowns()
@@ -503,9 +510,16 @@ class MonitoringUploadFragment : Fragment() {
                     onUploadSuccess(result.message)
                 }
                 is MonitoringViewModel.UploadResult.Error -> {
-                    Snackbar.make(binding.root, "❌ Error: ${result.message}", Snackbar.LENGTH_LONG)
-                        .setBackgroundTint(resources.getColor(R.color.status_error, null))
-                        .show()
+                    // Create unique key for error notifications too
+                    val errorKey = "upload_error_${System.currentTimeMillis()}"
+
+                    if (!hasNotificationBeenShown(errorKey)) {
+                        markNotificationAsShown(errorKey)
+
+                        Snackbar.make(binding.root, "Error: ${result.message}", Snackbar.LENGTH_LONG)
+                            .setBackgroundTint(resources.getColor(R.color.status_error, null))
+                            .show()
+                    }
                 }
             }
         }
@@ -513,21 +527,63 @@ class MonitoringUploadFragment : Fragment() {
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             // Only disable during loading, not based on quality checks
             binding.buttonUploadData.isEnabled = !isLoading && isFormComplete()
-            binding.buttonUploadData.text = if (isLoading) "⏳ Uploading..." else "📤 Upload Monitoring Data"
+            binding.buttonUploadData.text = if (isLoading) "Uploading..." else "Upload Monitoring Data"
         }
     }
 
+
     private fun onUploadSuccess(message: String) {
-        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG)
-            .setAction("🔗 View Impact") {
-                // Navigate to Credits tab to see monitoring data
-                findNavController().navigate(R.id.creditIssuanceFragment)
-            }
-            .setActionTextColor(resources.getColor(R.color.status_ready, null))
-            .show()
+        // Create unique key for this upload success notification
+        val timestamp = System.currentTimeMillis()
+        val notificationKey = "upload_success_${timestamp}"
+
+        // Only show notification if it hasn't been shown before
+        if (!hasNotificationBeenShown(notificationKey)) {
+            markNotificationAsShown(notificationKey)
+
+            Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG)
+                .setAction("🔗 View Impact") {
+                    // Navigate to Credits tab to see monitoring data
+                    findNavController().navigate(R.id.creditIssuanceFragment)
+                }
+                .setActionTextColor(resources.getColor(R.color.status_ready, null))
+                .show()
+        }
 
         clearForm()
     }
+
+    // ADD: Helper methods for notification tracking
+    private fun hasNotificationBeenShown(key: String): Boolean {
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(key, false)
+    }
+
+    private fun markNotificationAsShown(key: String) {
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(key, true).apply()
+    }
+
+    // Optional: Method to clear old notifications (call this periodically or on app start)
+    private fun clearOldNotifications() {
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+
+        // Clear notifications older than 24 hours
+        val oneDayAgo = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+        val allEntries = prefs.all
+
+        allEntries.keys.forEach { key ->
+            if (key.startsWith("upload_success_")) {
+                val timestamp = key.substringAfterLast("_").toLongOrNull()
+                if (timestamp != null && timestamp < oneDayAgo) {
+                    editor.remove(key)
+                }
+            }
+        }
+        editor.apply()
+    }
+
 
     /**
      * Navigate to monitoring data list
