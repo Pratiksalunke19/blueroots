@@ -1,16 +1,24 @@
 package com.blueroots.carbonregistry.viewmodel
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.blueroots.carbonregistry.data.models.MonitoringData
-import com.blueroots.carbonregistry.data.models.SyncStatus
-import com.blueroots.carbonregistry.data.models.VerificationStatus
+import com.blueroots.carbonregistry.data.models.*
+import com.blueroots.carbonregistry.data.repository.MonitoringDataRepository
+import com.blueroots.carbonregistry.data.storage.MonitoringStats
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.*
 
-class MonitoringViewModel : ViewModel() {
+class MonitoringViewModel(application: Application) : AndroidViewModel(application) {
+
+    // Repository with SharedPreferences
+    private val repository = MonitoringDataRepository(application.applicationContext)
+
+    // LiveData from Repository
+    val monitoringDataList: LiveData<List<MonitoringData>> = repository.allMonitoringData
 
     private val _uploadResult = MutableLiveData<UploadResult>()
     val uploadResult: LiveData<UploadResult> = _uploadResult
@@ -18,18 +26,51 @@ class MonitoringViewModel : ViewModel() {
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
 
-    private val _monitoringDataList = MutableLiveData<List<MonitoringData>>()
-    val monitoringDataList: LiveData<List<MonitoringData>> = _monitoringDataList
-
     private val _syncStatus = MutableLiveData<SyncStatus>()
     val syncStatus: LiveData<SyncStatus> = _syncStatus
 
-    // In-memory storage for demo (replace with actual repository/API calls later)
-    private val monitoringData = mutableListOf<MonitoringData>()
+    // Monitoring statistics
+    private val _monitoringStats = MutableLiveData<MonitoringStats>()
+    val monitoringStats: LiveData<MonitoringStats> = _monitoringStats
+
+    // Filtered monitoring data
+    private val _filteredMonitoringData = MutableLiveData<List<MonitoringData>>()
+    val filteredMonitoringData: LiveData<List<MonitoringData>> = _filteredMonitoringData
 
     init {
-        _monitoringDataList.value = monitoringData
-        _syncStatus.value = SyncStatus.SYNCED
+        loadInitialData()
+
+        // Observe monitoring data list changes and update filtered data
+        monitoringDataList.observeForever { data ->
+            _filteredMonitoringData.value = data
+            updateMonitoringStats()
+        }
+    }
+
+    private fun loadInitialData() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _syncStatus.value = SyncStatus.SYNCED
+
+            try {
+                // Check if we have monitoring data, if not, populate with sample data
+                val hasData = repository.hasMonitoringData()
+                if (!hasData) {
+                    val sampleData = generateSampleMonitoringData()
+                    sampleData.forEach { data ->
+                        repository.addMonitoringData(data)
+                    }
+                }
+
+                // Refresh repository to update LiveData
+                repository.refreshMonitoringData()
+
+            } catch (e: Exception) {
+                _uploadResult.value = UploadResult.Error("Failed to load monitoring data: ${e.message}")
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun uploadMonitoringData(data: MonitoringData) {
@@ -37,7 +78,7 @@ class MonitoringViewModel : ViewModel() {
             _isLoading.value = true
 
             try {
-                // Simulate API call
+                // Simulate API call delay
                 delay(2000)
 
                 // Basic validation
@@ -56,21 +97,33 @@ class MonitoringViewModel : ViewModel() {
                     return@launch
                 }
 
-                // Update sync status
+                // Generate ID if not provided
+                val dataId = if (data.id.isBlank()) {
+                    repository.generateNextMonitoringId()
+                } else {
+                    data.id
+                }
+
+                // Update data with proper sync and verification status
                 val uploadedData = data.copy(
+                    id = dataId,
                     syncStatus = SyncStatus.SYNCED,
-                    verificationStatus = VerificationStatus.PENDING
+                    verificationStatus = VerificationStatus.PENDING,
+                    createdAt = Date(),
+                    updatedAt = Date()
                 )
 
-                // Store data (in real app, this would be an API call)
-                monitoringData.add(uploadedData)
-                _monitoringDataList.value = monitoringData.toList()
+                // Save to SharedPreferences
+                repository.addMonitoringData(uploadedData)
 
                 _uploadResult.value = UploadResult.Success(
-                    "Monitoring data uploaded successfully. " +
-                            "Data ID: ${data.id.substring(0, 8)}... " +
-                            "Status: Pending Verification"
+                    "✅ Monitoring data uploaded successfully!\n" +
+                            "Data ID: ${dataId.takeLast(8)}...\n" +
+                            "Status: Pending Verification\n" +
+                            "🔗 Stored in local registry"
                 )
+
+                println("🔧 DEBUG: Monitoring data saved to SharedPreferences: $dataId")
 
             } catch (e: Exception) {
                 _uploadResult.value = UploadResult.Error("Failed to upload monitoring data: ${e.message}")
@@ -80,16 +133,37 @@ class MonitoringViewModel : ViewModel() {
         }
     }
 
-    fun getMonitoringDataByProject(projectId: String): List<MonitoringData> {
-        return monitoringData.filter { it.projectId == projectId }
+    fun getMonitoringDataByProject(projectId: String) {
+        viewModelScope.launch {
+            try {
+                val data = repository.getMonitoringDataByProject(projectId)
+                _filteredMonitoringData.value = data
+            } catch (e: Exception) {
+                _uploadResult.value = UploadResult.Error("Failed to filter by project: ${e.message}")
+            }
+        }
     }
 
-    fun getMonitoringDataByType(dataType: com.blueroots.carbonregistry.data.models.MonitoringDataType): List<MonitoringData> {
-        return monitoringData.filter { it.dataType == dataType }
+    fun getMonitoringDataByType(dataType: MonitoringDataType) {
+        viewModelScope.launch {
+            try {
+                val data = repository.getMonitoringDataByType(dataType)
+                _filteredMonitoringData.value = data
+            } catch (e: Exception) {
+                _uploadResult.value = UploadResult.Error("Failed to filter by type: ${e.message}")
+            }
+        }
     }
 
-    fun getPendingVerificationData(): List<MonitoringData> {
-        return monitoringData.filter { it.verificationStatus == VerificationStatus.PENDING }
+    fun getPendingVerificationData() {
+        viewModelScope.launch {
+            try {
+                val data = repository.getMonitoringDataByVerificationStatus(VerificationStatus.PENDING)
+                _filteredMonitoringData.value = data
+            } catch (e: Exception) {
+                _uploadResult.value = UploadResult.Error("Failed to get pending data: ${e.message}")
+            }
+        }
     }
 
     fun syncOfflineData() {
@@ -100,22 +174,179 @@ class MonitoringViewModel : ViewModel() {
                 // Simulate sync process
                 delay(3000)
 
-                // Update all local data to synced
-                val syncedData = monitoringData.map {
-                    if (it.syncStatus == SyncStatus.LOCAL) {
-                        it.copy(syncStatus = SyncStatus.SYNCED)
-                    } else it
-                }
+                // Sync all local data
+                repository.syncAllLocalData()
 
-                monitoringData.clear()
-                monitoringData.addAll(syncedData)
-                _monitoringDataList.value = monitoringData.toList()
                 _syncStatus.value = SyncStatus.SYNCED
+                _uploadResult.value = UploadResult.Success("🔄 All monitoring data synchronized successfully!")
 
             } catch (e: Exception) {
                 _syncStatus.value = SyncStatus.ERROR
+                _uploadResult.value = UploadResult.Error("Sync failed: ${e.message}")
             }
         }
+    }
+
+    /**
+     * Update verification status for monitoring data
+     */
+    fun updateVerificationStatus(dataId: String, status: VerificationStatus, notes: String = "") {
+        viewModelScope.launch {
+            try {
+                repository.updateVerificationStatus(dataId, status, notes)
+                _uploadResult.value = UploadResult.Success("Verification status updated to ${status.name}")
+            } catch (e: Exception) {
+                _uploadResult.value = UploadResult.Error("Failed to update verification: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Filter monitoring data
+     */
+    fun filterMonitoringData(projectName: String = "", dataType: MonitoringDataType? = null, verificationStatus: VerificationStatus? = null) {
+        viewModelScope.launch {
+            try {
+                var data = repository.getAllMonitoringDataSync()
+
+                if (projectName.isNotEmpty()) {
+                    data = data.filter { it.projectName.contains(projectName, ignoreCase = true) }
+                }
+
+                if (dataType != null) {
+                    data = data.filter { it.dataType == dataType }
+                }
+
+                if (verificationStatus != null) {
+                    data = data.filter { it.verificationStatus == verificationStatus }
+                }
+
+                _filteredMonitoringData.value = data
+            } catch (e: Exception) {
+                _uploadResult.value = UploadResult.Error("Failed to filter data: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Clear all filters and show all data
+     */
+    fun clearFilters() {
+        viewModelScope.launch {
+            val allData = repository.getAllMonitoringDataSync()
+            _filteredMonitoringData.value = allData
+        }
+    }
+
+    /**
+     * Delete monitoring data
+     */
+    fun deleteMonitoringData(dataId: String) {
+        viewModelScope.launch {
+            try {
+                repository.deleteMonitoringData(dataId)
+                _uploadResult.value = UploadResult.Success("Monitoring data deleted successfully")
+            } catch (e: Exception) {
+                _uploadResult.value = UploadResult.Error("Failed to delete data: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Get monitoring data requiring attention
+     */
+    fun getDataRequiringAttention() {
+        viewModelScope.launch {
+            try {
+                val data = repository.getMonitoringDataRequiringAttention()
+                _filteredMonitoringData.value = data
+            } catch (e: Exception) {
+                _uploadResult.value = UploadResult.Error("Failed to get urgent data: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Update monitoring statistics
+     */
+    private fun updateMonitoringStats() {
+        viewModelScope.launch {
+            try {
+                val stats = repository.getMonitoringStats()
+                _monitoringStats.value = stats
+            } catch (e: Exception) {
+                // Ignore errors in stats calculation
+            }
+        }
+    }
+
+    /**
+     * Generate sample monitoring data for demo
+     */
+    private fun generateSampleMonitoringData(): List<MonitoringData> {
+        return listOf(
+            MonitoringData(
+                id = "MON-${System.currentTimeMillis()}-1001",
+                projectId = "proj-001",
+                projectName = "Sundarbans Mangrove Restoration",
+                dataType = MonitoringDataType.SOIL_SAMPLE,
+                monitoringDate = Date(),
+                reportingPeriod = "Q3 2024",
+                location = MonitoringLocation(
+                    latitude = 21.9497,
+                    longitude = 89.1833,
+                    siteDescription = "Mangrove restoration plot A1"
+                ),
+                soilData = SoilData(
+                    sampleId = "SOIL-001",
+                    organicCarbonContent = 12.5,
+                    pH = 7.2,
+                    salinity = 15.0,
+                    carbonStock = 85.3
+                ),
+                dataCollector = "Dr. Ravi Kumar",
+                collectorQualifications = "Marine Biology PhD",
+                equipmentUsed = listOf("pH meter", "EC meter", "Soil auger"),
+                notes = "Soil sample collected from restoration site showing good organic content",
+                verificationStatus = VerificationStatus.VERIFIED,
+                syncStatus = SyncStatus.SYNCED,
+                createdAt = Date(),
+                updatedAt = Date()
+            ),
+            MonitoringData(
+                id = "MON-${System.currentTimeMillis()}-1002",
+                projectId = "proj-002",
+                projectName = "Gulf Coast Blue Carbon Project",
+                dataType = MonitoringDataType.VEGETATION_SURVEY,
+                monitoringDate = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_YEAR, -5)
+                }.time,
+                reportingPeriod = "Q3 2024",
+                location = MonitoringLocation(
+                    latitude = 29.7604,
+                    longitude = -95.3698,
+                    siteDescription = "Salt marsh restoration area"
+                ),
+                vegetationData = VegetationData(
+                    plotId = "VEG-001",
+                    canopyCover = 75.0,
+                    averageHeight = 1.8,
+                    stemDensity = 150,
+                    healthAssessment = HealthStatus.HEALTHY
+                ),
+                dataCollector = "Sarah Johnson",
+                collectorQualifications = "Wetland Ecologist",
+                equipmentUsed = listOf("Quadrat", "Measuring tape", "Camera"),
+                notes = "Vegetation showing excellent recovery with 75% canopy cover",
+                verificationStatus = VerificationStatus.PENDING,
+                syncStatus = SyncStatus.SYNCED,
+                priority = Priority.MEDIUM,
+                createdAt = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_YEAR, -5)
+                }.time,
+                updatedAt = Date()
+            )
+        )
     }
 
     sealed class UploadResult {

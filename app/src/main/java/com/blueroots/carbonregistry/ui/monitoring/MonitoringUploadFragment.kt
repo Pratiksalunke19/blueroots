@@ -13,7 +13,8 @@ import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.blueroots.carbonregistry.R
 import com.blueroots.carbonregistry.data.models.*
@@ -31,7 +32,8 @@ class MonitoringUploadFragment : Fragment() {
     private var _binding: FragmentMonitoringUploadBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: MonitoringViewModel by viewModels()
+    // Use activityViewModels to share with monitoring list
+    private val viewModel: MonitoringViewModel by activityViewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var photoAdapter: PhotoAdapter
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -169,6 +171,14 @@ class MonitoringUploadFragment : Fragment() {
                     uploadMonitoringData()
                 }
             }
+
+            // ADD: View monitoring list button (optional - can be added to toolbar or as separate button)
+            // You can add this button to your layout if needed
+            /*
+            buttonViewMonitoringList.setOnClickListener {
+                navigateToMonitoringList()
+            }
+            */
         }
     }
 
@@ -223,7 +233,7 @@ class MonitoringUploadFragment : Fragment() {
                         binding.editTextLatitude.setText(String.format("%.6f", it.latitude))
                         binding.editTextLongitude.setText(String.format("%.6f", it.longitude))
                         binding.editTextAltitude.setText(String.format("%.1f", it.altitude))
-                        Snackbar.make(binding.root, "Location captured successfully", Snackbar.LENGTH_SHORT).show()
+                        Snackbar.make(binding.root, "📍 Location captured successfully", Snackbar.LENGTH_SHORT).show()
                         updateStatus()
                     } ?: run {
                         Snackbar.make(binding.root, "Unable to get current location", Snackbar.LENGTH_LONG).show()
@@ -309,18 +319,18 @@ class MonitoringUploadFragment : Fragment() {
         binding.apply {
             when {
                 isFormComplete && qualityChecksComplete -> {
-                    textViewStatus.text = "Status: Ready for Upload"
+                    textViewStatus.text = "Status: ✅ Ready for Upload"
                     textViewStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_ready))
                     buttonUploadData.isEnabled = true
                 }
                 isFormComplete -> {
-                    textViewStatus.text = "Status: Complete Quality Checks"
+                    textViewStatus.text = "Status: ⚠️ Complete Quality Checks"
                     textViewStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_warning))
-                    // CHANGED: Allow upload even without all quality checks completed
+                    // Allow upload even without all quality checks completed
                     buttonUploadData.isEnabled = true
                 }
                 else -> {
-                    textViewStatus.text = "Status: Incomplete Data"
+                    textViewStatus.text = "Status: ❌ Incomplete Data"
                     textViewStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_error))
                     buttonUploadData.isEnabled = false
                 }
@@ -340,7 +350,7 @@ class MonitoringUploadFragment : Fragment() {
 
     private fun areQualityChecksComplete(): Boolean {
         binding.apply {
-            // CHANGED: Made quality checks more flexible
+            // Made quality checks more flexible
             // Only require data complete check, others are optional
             return chipDataComplete.isChecked
         }
@@ -490,19 +500,80 @@ class MonitoringUploadFragment : Fragment() {
         viewModel.uploadResult.observe(viewLifecycleOwner) { result ->
             when (result) {
                 is MonitoringViewModel.UploadResult.Success -> {
-                    Snackbar.make(binding.root, "Monitoring data uploaded successfully!", Snackbar.LENGTH_LONG).show()
-                    clearForm()
+                    onUploadSuccess(result.message)
                 }
                 is MonitoringViewModel.UploadResult.Error -> {
-                    Snackbar.make(binding.root, "Error: ${result.message}", Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(binding.root, "❌ Error: ${result.message}", Snackbar.LENGTH_LONG)
+                        .setBackgroundTint(resources.getColor(R.color.status_error, null))
+                        .show()
                 }
             }
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            // CHANGED: Only disable during loading, not based on quality checks
+            // Only disable during loading, not based on quality checks
             binding.buttonUploadData.isEnabled = !isLoading && isFormComplete()
-            binding.buttonUploadData.text = if (isLoading) "Uploading..." else "Upload Monitoring Data"
+            binding.buttonUploadData.text = if (isLoading) "⏳ Uploading..." else "📤 Upload Monitoring Data"
+        }
+    }
+
+    private fun onUploadSuccess(message: String) {
+        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG)
+            .setAction("🔗 View Impact") {
+                // Navigate to Credits tab to see monitoring data
+                findNavController().navigate(R.id.creditIssuanceFragment)
+            }
+            .setActionTextColor(resources.getColor(R.color.status_ready, null))
+            .show()
+
+        clearForm()
+    }
+
+    /**
+     * Navigate to monitoring data list
+     * You can implement this in different ways:
+     * 1. Create a separate fragment and navigate to it
+     * 2. Show a bottom sheet with monitoring list
+     * 3. Add a toggle in the same fragment to switch between upload and list view
+     */
+    private fun navigateToMonitoringList() {
+        // Option 1: Navigate to a separate monitoring list fragment (if you create one)
+        // findNavController().navigate(R.id.action_monitoringUpload_to_monitoringList)
+
+        // Option 2: For now, just show a preview of monitoring data in a dialog
+        showMonitoringDataPreview()
+
+        // Option 3: You could also switch to credits tab to show the impact
+        // findNavController().navigate(R.id.creditIssuanceFragment)
+    }
+
+    /**
+     * Show a preview of monitoring data (temporary solution)
+     */
+    private fun showMonitoringDataPreview() {
+        viewModel.filteredMonitoringData.value?.let { data ->
+            val recentEntries = data.take(3)
+            val previewText = if (recentEntries.isNotEmpty()) {
+                "📊 Recent Monitoring Entries:\n\n" + recentEntries.joinToString("\n\n") { entry ->
+                    "• ${entry.dataType.displayName}\n" +
+                            "  Project: ${entry.projectName}\n" +
+                            "  Date: ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(entry.monitoringDate)}\n" +
+                            "  Status: ${entry.verificationStatus.name}"
+                } + "\n\n📈 Total Entries: ${data.size}"
+            } else {
+                "No monitoring data available yet."
+            }
+
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("📊 Monitoring Data Overview")
+                .setMessage(previewText)
+                .setPositiveButton("OK", null)
+                .setNeutralButton("📊 See Impact on Credits") { _, _ ->
+                    // Navigate to credits to show monitoring impact
+                    // findNavController().navigate(R.id.creditIssuanceFragment)
+                    Snackbar.make(binding.root, "🔗 Monitoring data impacts credit calculations!", Snackbar.LENGTH_LONG).show()
+                }
+                .show()
         }
     }
 
