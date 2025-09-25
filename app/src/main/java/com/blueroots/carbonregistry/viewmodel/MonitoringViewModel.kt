@@ -1,5 +1,6 @@
 package com.blueroots.carbonregistry.viewmodel
 
+import SingleLiveEvent
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
@@ -20,8 +21,9 @@ class MonitoringViewModel(application: Application) : AndroidViewModel(applicati
     // LiveData from Repository
     val monitoringDataList: LiveData<List<MonitoringData>> = repository.allMonitoringData
 
-    private val _uploadResult = MutableLiveData<UploadResult>()
-    val uploadResult: LiveData<UploadResult> = _uploadResult
+    // Change from regular MutableLiveData to SingleLiveEvent
+    private val _uploadResult = SingleLiveEvent<UploadResult>()
+    val uploadResult: LiveData<UploadResult> get() = _uploadResult
 
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
@@ -347,6 +349,10 @@ class MonitoringViewModel(application: Application) : AndroidViewModel(applicati
                 updatedAt = Date()
             )
         )
+    }
+
+    fun clearUploadResult() {
+        _uploadResult.value = null
     }
 
     sealed class UploadResult {

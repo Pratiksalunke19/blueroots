@@ -508,29 +508,17 @@ class MonitoringUploadFragment : Fragment() {
             when (result) {
                 is MonitoringViewModel.UploadResult.Success -> {
                     onUploadSuccess(result.message)
+                    viewModel.clearUploadResult() // Add this method to clear the result
                 }
                 is MonitoringViewModel.UploadResult.Error -> {
-                    // Create unique key for error notifications too
-                    val errorKey = "upload_error_${System.currentTimeMillis()}"
-
-                    if (!hasNotificationBeenShown(errorKey)) {
-                        markNotificationAsShown(errorKey)
-
-                        Snackbar.make(binding.root, "Error: ${result.message}", Snackbar.LENGTH_LONG)
-                            .setBackgroundTint(resources.getColor(R.color.status_error, null))
-                            .show()
-                    }
+                    Snackbar.make(binding.root, "Error: ${result.message}", Snackbar.LENGTH_LONG)
+                        .setBackgroundTint(resources.getColor(R.color.status_error, null))
+                        .show()
+                    viewModel.clearUploadResult() // Add this method to clear the result
                 }
             }
         }
-
-        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            // Only disable during loading, not based on quality checks
-            binding.buttonUploadData.isEnabled = !isLoading && isFormComplete()
-            binding.buttonUploadData.text = if (isLoading) "Uploading..." else "Upload Monitoring Data"
-        }
     }
-
 
     private fun onUploadSuccess(message: String) {
         // Create unique key for this upload success notification
