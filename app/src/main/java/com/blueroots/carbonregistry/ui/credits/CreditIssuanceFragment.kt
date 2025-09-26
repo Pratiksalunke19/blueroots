@@ -7,11 +7,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.blueroots.carbonregistry.R
+import com.blueroots.carbonregistry.ai.CarbonPrediction
 import com.blueroots.carbonregistry.data.blockchain.HederaTransactionResult
 import com.blueroots.carbonregistry.data.models.CarbonCredit
 import com.blueroots.carbonregistry.data.models.CreditStatus
@@ -63,8 +65,9 @@ class CreditIssuanceFragment : Fragment() {
     private fun setupRecyclerViews() {
         // Credit adapter
         creditAdapter = CreditAdapter(
-            onCreditClick = { credit -> showCreditDetails(credit) },
-            onTransferClick = { credit -> handleCreditTransfer(credit) }
+            onCreditClick = { credit: CarbonCredit -> showCreditDetails(credit) },
+            onTransferClick = { credit: CarbonCredit -> handleCreditTransfer(credit) },
+            onPredictFutureClick = { credit: CarbonCredit -> showBatchSpecificOracleDialog(credit) }
         )
 
         binding.recyclerViewCredits.apply {
@@ -83,6 +86,57 @@ class CreditIssuanceFragment : Fragment() {
             adapter = monitoringAdapter
             layoutManager = LinearLayoutManager(requireContext())
         }
+    }
+
+    // NEW: Batch-specific Oracle dialog
+    private fun showBatchSpecificOracleDialog(credit: CarbonCredit) {
+        val message = """
+        AI Carbon Oracle - Batch Analysis
+        
+        Batch Details:
+        ID: ${credit.batchId}
+        Project: ${credit.projectName}
+        Current Credits: ${credit.quantity.toInt()} tCO2e
+        Status: ${credit.status.displayName}
+        Issue Date: ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(credit.issueDate)}
+        
+        Analysis Scope:
+        • Predict future credit potential for this specific project
+        • Analyze environmental trends affecting this batch
+        • Risk assessment for continued performance
+        
+        Generate AI prediction for this batch?
+        """.trimIndent()
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Batch-Specific AI Analysis")
+            .setMessage(message)
+            .setIcon(R.drawable.ic_psychology_24)
+            .setPositiveButton("Predict Future") { _, _ ->
+                generateBatchSpecificPrediction(credit)
+            }
+            .setNeutralButton("View Batch Details") { _, _ ->
+                showCreditDetails(credit)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // NEW: Generate prediction for specific batch
+    private fun generateBatchSpecificPrediction(credit: CarbonCredit) {
+        // Find related monitoring data for this project
+        val relatedMonitoringData = monitoringViewModel.filteredMonitoringData.value?.filter {
+            it.projectName.contains(credit.projectName.split(" ").take(2).joinToString(" "), ignoreCase = true)
+        }?.firstOrNull()
+
+        Snackbar.make(
+            binding.root,
+            "AI analyzing batch ${credit.batchId} performance...",
+            Snackbar.LENGTH_SHORT
+        ).show()
+
+        // Call the Oracle with batch-specific context
+        creditViewModel.generateBatchSpecificPrediction(credit, relatedMonitoringData)
     }
 
     private fun setupDropdowns() {
@@ -187,6 +241,126 @@ class CreditIssuanceFragment : Fragment() {
                 }
             }
         }
+
+        // Observe batch-specific predictions
+        creditViewModel.batchPrediction.observe(viewLifecycleOwner) { (credit, prediction) ->
+            prediction?.let { showBatchPredictionDialog(credit, it) }
+        }
+    }
+
+    // NEW: Show batch-specific prediction results
+    private fun showBatchPredictionDialog(credit: CarbonCredit, prediction: CarbonPrediction) {
+        val confidenceColor = when {
+            prediction.confidence >= 85 -> "🟢"
+            prediction.confidence >= 70 -> "🟡"
+            else -> "🔴"
+        }
+
+        val message = """
+        BATCH AI ORACLE PREDICTION
+        
+        Batch: ${credit.batchId}
+        Project: ${credit.projectName}
+        Current Holdings: ${credit.quantity.toInt()} tCO2e
+        
+        Future Prediction: ${prediction.predictedCredits.toString().replace("(\\d)(?=(\\d{3})+\$)".toRegex(), "$1,")} tCO2e
+        $confidenceColor Confidence: ${prediction.confidence}%
+        Timeframe: ${prediction.timeframe}
+        
+        AI Analysis:
+        ${prediction.reasoning}
+        
+        Success Factors for This Project:
+        ${prediction.factors.joinToString("\n") { "• $it" }}
+        
+        Project-Specific Risks:
+        ${prediction.riskFactors.joinToString("\n") { "• $it" }}
+        
+        Potential Portfolio Growth:
+        Current Value: ₹${(credit.quantity * 60).toInt().toString().replace("(\\d)(?=(\\d{3})+\$)".toRegex(), "$1,")}
+        Future Value: ₹${(prediction.predictedCredits * 60).toString().replace("(\\d)(?=(\\d{3})+\$)".toRegex(), "$1,")}
+        Growth: +₹${((prediction.predictedCredits - credit.quantity) * 60).toString().replace("(\\d)(?=(\\d{3})+\$)".toRegex(), "$1,")}
+    """.trimIndent()
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Future Growth Projection")
+            .setMessage(message)
+            .setIcon(R.drawable.ic_psychology_24)
+            .setPositiveButton("Excellent!") { _, _ ->
+                Snackbar.make(
+                    binding.root,
+                    "Prediction saved to batch ${credit.batchId} analytics",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
+            .setNeutralButton("Share Analysis") { _, _ ->
+                // Optional: Share prediction
+            }
+            .show()
+    }
+
+    private fun showCarbonOracleDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("🔮 AI Carbon Oracle")
+            .setMessage("Generate AI-powered predictions for future carbon credit generation based on current monitoring data and environmental patterns?")
+            .setIcon(R.drawable.ic_psychology_24)
+            .setPositiveButton("Predict Future") { _, _ ->
+                // Get latest monitoring data
+                val latestMonitoringData = monitoringViewModel.filteredMonitoringData.value?.firstOrNull()
+                creditViewModel.generateCarbonPrediction(latestMonitoringData)
+
+                Snackbar.make(
+                    binding.root,
+                    "🧠 AI analyzing environmental data...",
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showPredictionDialog(prediction: CarbonPrediction) {
+        val confidenceColor = when {
+            prediction.confidence >= 85 -> "🟢"
+            prediction.confidence >= 70 -> "🟡"
+            else -> "🔴"
+        }
+
+        val message = """
+        🔮 AI CARBON ORACLE PREDICTION
+        
+        📈 Predicted Credits: ${prediction.predictedCredits.toString().replace("(\\d)(?=(\\d{3})+\$)".toRegex(), "$1,")} tCO2e
+        $confidenceColor Confidence: ${prediction.confidence}%
+        ⏱️ Timeframe: ${prediction.timeframe}
+        
+        🧠 AI Analysis:
+        ${prediction.reasoning}
+        
+        🔑 Key Success Factors:
+        ${prediction.factors.joinToString("\n") { "• $it" }}
+        
+        ⚠️ Risk Factors:
+        ${prediction.riskFactors.joinToString("\n") { "• $it" }}
+        
+        💰 Estimated Value: ₹${(prediction.predictedCredits * 60).toString().replace("(\\d)(?=(\\d{3})+\$)".toRegex(), "$1,")} 
+        (@ ₹60 per credit)
+    """.trimIndent()
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("🎯 Future Carbon Generation Forecast")
+            .setMessage(message)
+            .setIcon(R.drawable.ic_psychology_24)
+            .setPositiveButton("Amazing!") { _, _ ->
+                Snackbar.make(
+                    binding.root,
+                    "🚀 Prediction saved to project analytics",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
+            .setNeutralButton("Share Prediction") { _, _ ->
+                // Optional: Share prediction
+            }
+            .show()
     }
 
     private fun showCreditsView() {

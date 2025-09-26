@@ -1,19 +1,24 @@
 package com.blueroots.carbonregistry.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.blueroots.carbonregistry.ai.CarbonOracleService
+import com.blueroots.carbonregistry.ai.CarbonPrediction
 import com.blueroots.carbonregistry.data.models.CarbonCredit
 import com.blueroots.carbonregistry.data.models.CreditStatus
 import com.blueroots.carbonregistry.data.models.EcosystemType
 import com.blueroots.carbonregistry.data.blockchain.MockHederaService
 import com.blueroots.carbonregistry.data.blockchain.HederaTransactionResult
+import com.blueroots.carbonregistry.data.models.MonitoringData
 import com.blueroots.carbonregistry.data.repository.CarbonCreditRepository
 import com.blueroots.carbonregistry.data.storage.PortfolioStats
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.random.Random
 
@@ -52,6 +57,15 @@ class CreditViewModel(application: Application) : AndroidViewModel(application) 
     private val _filteredCredits = MutableLiveData<List<CarbonCredit>>()
     val filteredCredits: LiveData<List<CarbonCredit>> = _filteredCredits
 
+    private val carbonOracle = CarbonOracleService()
+
+    private val _prediction = MutableLiveData<CarbonPrediction?>()
+    val prediction: LiveData<CarbonPrediction?> get() = _prediction
+
+    private val _isGeneratingPrediction = MutableLiveData<Boolean>()
+    val isGeneratingPrediction: LiveData<Boolean> get() = _isGeneratingPrediction
+
+
     init {
         loadInitialData()
 
@@ -59,6 +73,32 @@ class CreditViewModel(application: Application) : AndroidViewModel(application) 
         creditList.observeForever { credits ->
             _filteredCredits.value = credits
             updatePortfolioStats()
+        }
+    }
+
+    // NEW: Batch-specific prediction
+    private val _batchPrediction = MutableLiveData<Pair<CarbonCredit, CarbonPrediction?>>()
+    val batchPrediction: LiveData<Pair<CarbonCredit, CarbonPrediction?>> get() = _batchPrediction
+
+    fun generateBatchSpecificPrediction(credit: CarbonCredit, monitoringData: MonitoringData?) {
+        viewModelScope.launch {
+            _isGeneratingPrediction.value = true
+
+            try {
+                // Call the Oracle with batch-specific data (removed batchContext parameter)
+                val prediction = carbonOracle.predictBatchFuture(
+                    credit = credit,
+                    monitoringData = monitoringData
+                )
+
+                _batchPrediction.value = Pair(credit, prediction)
+
+            } catch (e: Exception) {
+                Log.e("CreditViewModel", "Batch prediction failed", e)
+                _batchPrediction.value = Pair(credit, null)
+            } finally {
+                _isGeneratingPrediction.value = false
+            }
         }
     }
 
@@ -83,6 +123,38 @@ class CreditViewModel(application: Application) : AndroidViewModel(application) 
                 _errorMessage.value = "Failed to load carbon credits: ${e.message}"
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun generateCarbonPrediction(monitoringData: MonitoringData? = null) {
+        viewModelScope.launch {
+            _isGeneratingPrediction.value = true
+
+            try {
+                // Use real monitoring data if available, otherwise use demo data
+                val soilInfo = monitoringData?.soilData?.let { soil ->
+                    "Organic Carbon: ${soil.organicCarbonContent}%, pH: ${soil.pH}, " +
+                            "Bulk Density: ${soil.bulkDensity}, Salinity: ${soil.salinity}ppt, " +
+                            "Moisture: ${soil.moisture}%, Temperature: ${soil.sampleTemperature}°C"
+                } ?: "Organic Carbon: 8.7%, pH: 7.8, Bulk Density: 0.85, Salinity: 28ppt, Moisture: 62%, Temperature: 26.5°C"
+
+                val prediction = carbonOracle.predictCarbonCredits(
+                    projectName = "Sundarbans Mangrove Restoration Initiative - Phase II",
+                    soilData = soilInfo,
+                    location = "Sundarbans, West Bengal, India - GPS: 22.1578, 88.9512",
+                    currentCredits = 450,
+                    projectArea = 1500.0,
+                    ecosystemType = "Mangrove wetland restoration"
+                )
+
+                _prediction.value = prediction
+
+            } catch (e: Exception) {
+                Log.e("CreditViewModel", "Prediction generation failed", e)
+                _prediction.value = null
+            } finally {
+                _isGeneratingPrediction.value = false
             }
         }
     }
