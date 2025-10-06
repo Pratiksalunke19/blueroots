@@ -35,14 +35,12 @@ class ProjectRegistrationFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: ProjectRegistrationViewModel by viewModels()
-    // Use activityViewModels to share the same CreditViewModel instance
     private val creditViewModel: CreditViewModel by activityViewModels()
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     private var selectedStartDate: Calendar = Calendar.getInstance()
 
-    // Location permission launcher
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -76,15 +74,16 @@ class ProjectRegistrationFragment : Fragment() {
         setupDropdowns()
         setupClickListeners()
         observeViewModel()
+
+        // 🔹 Auto-fill demo data for testing
+        fillDemoData()
     }
 
     private fun setupDropdowns() {
-        // Ecosystem Type Dropdown
         val ecosystemTypes = listOf("Mangrove", "Seagrass", "Salt Marsh", "Coastal Wetland")
         val ecosystemAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, ecosystemTypes)
         binding.dropdownEcosystemType.setAdapter(ecosystemAdapter)
 
-        // Funding Source Dropdown
         val fundingSources = listOf(
             "Private Investment",
             "Public Funding",
@@ -96,7 +95,6 @@ class ProjectRegistrationFragment : Fragment() {
         val fundingAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, fundingSources)
         binding.dropdownFundingSource.setAdapter(fundingAdapter)
 
-        // Methodology Dropdown
         val methodologies = listOf(
             "VCS VM0007 - Restoration of degraded coastal wetlands",
             "CDM AMS-III.BF - Small-scale wetland restoration",
@@ -108,19 +106,53 @@ class ProjectRegistrationFragment : Fragment() {
         binding.dropdownMethodology.setAdapter(methodologyAdapter)
     }
 
+    private fun fillDemoData() {
+        binding.apply {
+            editTextProjectName.setText("BlueRoots Mangrove Restoration Pilot")
+            editTextProjectDescription.setText("A demonstration project for restoring mangrove ecosystems in Goa, improving carbon sequestration and biodiversity.")
+            dropdownEcosystemType.setText("Mangrove", false)
+            dropdownFundingSource.setText("Carbon Finance", false)
+            dropdownMethodology.setText("VCS VM0007 - Restoration of degraded coastal wetlands", false)
+
+            editTextLatitude.setText("15.2993")
+            editTextLongitude.setText("74.1240")
+            editTextCountry.setText("India")
+            editTextState.setText("Goa")
+            editTextDistrict.setText("North Goa")
+            editTextNearestCity.setText("Panaji")
+            editTextProjectArea.setText("25.0")
+            editTextDuration.setText("10")
+            editTextCreditingPeriod.setText("5")
+            editTextInvestment.setText("1200000")
+            editTextExpectedCredits.setText("50000")
+
+            editTextOrganization.setText("BlueRoots Research Foundation")
+            editTextContactPerson.setText("Dr. Aisha Fernandes")
+            editTextContactEmail.setText("demo@blueroots.org")
+            editTextCommunityPartner.setText("Goa Coastal Community Group")
+            editTextVegetation.setText("Dense mangrove and salt-tolerant flora")
+            editTextSoilType.setText("Silty clay with moderate salinity")
+            editTextHydrology.setText("Tidal estuarine hydrology")
+
+            selectedStartDate.add(Calendar.DAY_OF_MONTH, 2)
+            editTextStartDate.setText(dateFormat.format(selectedStartDate.time))
+
+            chipVCS.isChecked = true
+            chipFPIC.isChecked = true
+            chipCommunityBenefit.isChecked = true
+        }
+    }
+
     private fun setupClickListeners() {
         binding.apply {
-            // Get Location Button
             buttonGetLocation.setOnClickListener {
                 checkLocationPermissionAndGetLocation()
             }
 
-            // Start Date Picker
             editTextStartDate.setOnClickListener {
                 showDatePicker()
             }
 
-            // Submit Button
             buttonSubmitProject.setOnClickListener {
                 if (validateForm()) {
                     submitProject()
@@ -192,16 +224,13 @@ class ProjectRegistrationFragment : Fragment() {
             selectedStartDate.get(Calendar.DAY_OF_MONTH)
         )
 
-        // Set minimum date to today
         datePickerDialog.datePicker.minDate = System.currentTimeMillis()
         datePickerDialog.show()
     }
 
     private fun validateForm(): Boolean {
         var isValid = true
-
         binding.apply {
-            // Validate required fields
             if (editTextProjectName.text.toString().trim().isEmpty()) {
                 editTextProjectName.error = "Project name is required"
                 isValid = false
@@ -254,60 +283,26 @@ class ProjectRegistrationFragment : Fragment() {
                 editTextContactEmail.error = "Please enter a valid email"
                 isValid = false
             }
-
-            // Validate numeric fields
-            try {
-                val latitude = editTextLatitude.text.toString().toDoubleOrNull()
-                if (latitude == null || latitude < -90 || latitude > 90) {
-                    editTextLatitude.error = "Please enter a valid latitude (-90 to 90)"
-                    isValid = false
-                }
-            } catch (e: Exception) {
-                editTextLatitude.error = "Please enter a valid latitude"
-                isValid = false
-            }
-
-            try {
-                val longitude = editTextLongitude.text.toString().toDoubleOrNull()
-                if (longitude == null || longitude < -180 || longitude > 180) {
-                    editTextLongitude.error = "Please enter a valid longitude (-180 to 180)"
-                    isValid = false
-                }
-            } catch (e: Exception) {
-                editTextLongitude.error = "Please enter a valid longitude"
-                isValid = false
-            }
         }
-
         return isValid
     }
 
     private fun submitProject() {
         val projectRegistration = createProjectFromForm()
-
-        // Show immediate feedback
-        Snackbar.make(binding.root, "Submitting project to Hedera blockchain...", Snackbar.LENGTH_LONG).show()
-
-        // Disable submit button to prevent double submission
+        Snackbar.make(binding.root, "Registering project...", Snackbar.LENGTH_LONG).show()
         binding.buttonSubmitProject.isEnabled = false
-        binding.buttonSubmitProject.text = "Submitting to Blockchain..."
-
-        // Trigger blockchain credit issuance demo
+        binding.buttonSubmitProject.text = "Registering Project..."
+        viewModel.saveProjectWithSync(projectRegistration)
         triggerCreditIssuanceDemo(projectRegistration)
     }
 
     private fun triggerCreditIssuanceDemo(project: ProjectRegistration) {
-        // Create a proper location string
         val locationString = listOf(
             project.nearestCity,
             project.district,
             project.state,
             project.country
         ).filter { it.isNotBlank() }.joinToString(", ")
-
-        // Add logging for debugging
-        println("🔧 DEBUG: Triggering credit issuance for project: ${project.projectName}")
-        println("🔧 DEBUG: Area: ${project.projectArea}, Type: ${project.projectType}")
 
         creditViewModel.processProjectReviewAndIssueCredits(
             projectId = project.id ?: UUID.randomUUID().toString(),
@@ -316,34 +311,21 @@ class ProjectRegistrationFragment : Fragment() {
             ecosystemType = project.projectType,
             location = locationString.ifBlank { "Unknown Location" }
         )
-
-        // Show success message and navigate to credits
-        Snackbar.make(binding.root, "Project submitted to Hedera blockchain!", Snackbar.LENGTH_LONG)
-            .show()
-
-        // Re-enable submit button after delay
-        binding.buttonSubmitProject.postDelayed({
-            binding.buttonSubmitProject.isEnabled = true
-            binding.buttonSubmitProject.text = "Submit Project for Review"
-        }, 3000)
     }
 
     private fun createProjectFromForm(): ProjectRegistration {
         binding.apply {
-            // Get selected standards
             val selectedStandards = mutableListOf<String>()
             if (chipVCS.isChecked) selectedStandards.add("VCS")
             if (chipGoldStandard.isChecked) selectedStandards.add("Gold Standard")
             if (chipCDM.isChecked) selectedStandards.add("CDM")
             if (chipCAR.isChecked) selectedStandards.add("CAR")
 
-            // Get selected safeguards
             val selectedSafeguards = mutableListOf<String>()
             if (chipFPIC.isChecked) selectedSafeguards.add("FPIC Compliance")
             if (chipGender.isChecked) selectedSafeguards.add("Gender Inclusive")
             if (chipCommunityBenefit.isChecked) selectedSafeguards.add("Community Benefit Sharing")
 
-            // Map ecosystem type
             val ecosystemType = when (dropdownEcosystemType.text.toString()) {
                 "Mangrove" -> EcosystemType.MANGROVE
                 "Seagrass" -> EcosystemType.SEAGRASS
@@ -352,7 +334,6 @@ class ProjectRegistrationFragment : Fragment() {
                 else -> EcosystemType.MANGROVE
             }
 
-            // Map funding source
             val fundingSource = when (dropdownFundingSource.text.toString()) {
                 "Private Investment" -> FundingSource.PRIVATE
                 "Public Funding" -> FundingSource.PUBLIC
@@ -363,7 +344,6 @@ class ProjectRegistrationFragment : Fragment() {
                 else -> FundingSource.PRIVATE
             }
 
-            // Map methodology
             val methodology = when {
                 dropdownMethodology.text.toString().contains("VM0007") -> CarbonMethodology.VCS_VM0007
                 dropdownMethodology.text.toString().contains("AMS-III.BF") -> CarbonMethodology.CDM_AMS_III_BF
@@ -416,11 +396,13 @@ class ProjectRegistrationFragment : Fragment() {
         viewModel.submissionResult.observe(viewLifecycleOwner) { result ->
             when (result) {
                 is ProjectRegistrationViewModel.SubmissionResult.Success -> {
-                    Snackbar.make(binding.root, "Project submitted successfully to Hedera!", Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(binding.root, "✅ ${result.message}", Snackbar.LENGTH_LONG).show()
                     clearForm()
+                    binding.buttonSubmitProject.isEnabled = true
+                    binding.buttonSubmitProject.text = "Submit Project for Review"
                 }
                 is ProjectRegistrationViewModel.SubmissionResult.Error -> {
-                    Snackbar.make(binding.root, "Error: ${result.message}", Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(binding.root, "❌ Error: ${result.message}", Snackbar.LENGTH_LONG).show()
                     binding.buttonSubmitProject.isEnabled = true
                     binding.buttonSubmitProject.text = "Submit Project for Review"
                 }
@@ -434,7 +416,12 @@ class ProjectRegistrationFragment : Fragment() {
             }
         }
 
-        // Observe blockchain status from CreditViewModel
+        viewModel.syncStatus.observe(viewLifecycleOwner) { status ->
+            if (status.isNotEmpty()) {
+                Snackbar.make(binding.root, status, Snackbar.LENGTH_SHORT).show()
+            }
+        }
+
         creditViewModel.blockchainStatus.observe(viewLifecycleOwner) { status ->
             if (status.isNotEmpty()) {
                 Snackbar.make(binding.root, status, Snackbar.LENGTH_SHORT).show()
@@ -466,11 +453,9 @@ class ProjectRegistrationFragment : Fragment() {
             editTextSoilType.text?.clear()
             editTextHydrology.text?.clear()
 
-            // Clear chips
             chipGroupStandards.clearCheck()
             chipGroupSafeguards.clearCheck()
 
-            // Reset dropdowns
             dropdownEcosystemType.setText("Mangrove", false)
             dropdownFundingSource.setText("", false)
             dropdownMethodology.setText("VCS VM0007 - Restoration of degraded coastal wetlands", false)

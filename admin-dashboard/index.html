@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueRoots - Blue Carbon Registry Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header__content">
+            <div class="header__brand">
+                <img src="assets/blueroots_logo.jpg" alt="BlueRoots Logo" class="header__logo">
+                <div class="header__title">
+                    <h1>BlueRoots</h1>
+                    <span>Blue Carbon Registry</span>
+                </div>
+            </div>
+            <div class="header__actions">
+                <div class="header__status">
+                    <span class="material-icons">circle</span>
+                    <span id="system-status">Operational</span>
+                </div>
+                <button class="btn btn--outline" id="notifications-btn">
+                    <span class="material-icons">notifications</span>
+                    <span class="notification-badge" id="notification-count">3</span>
+                </button>
+                <div class="header__user">
+                    <span class="material-icons">account_circle</span>
+                    <span>Administrator</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <ul class="sidebar__menu">
+                <li><a href="#dashboard" class="sidebar__link active" data-section="dashboard">
+                    <span class="material-icons">dashboard</span>Executive Dashboard</a></li>
+                <li><a href="#projects" class="sidebar__link" data-section="projects">
+                    <span class="material-icons">eco</span>Project Pipeline</a></li>
+                <li><a href="#ai-review" class="sidebar__link" data-section="ai-review">
+                    <span class="material-icons">smart_toy</span>AI Review Queue</a></li>
+                <li><a href="#verification" class="sidebar__link" data-section="verification">
+                    <span class="material-icons">verified</span>Verification & Auditing</a></li>
+                <li><a href="#credits" class="sidebar__link" data-section="credits">
+                    <span class="material-icons">account_balance</span>Credit Issuance</a></li>
+                <li><a href="#blockchain" class="sidebar__link" data-section="blockchain">
+                    <span class="material-icons">link</span>Hedera Blockchain</a></li>
+                <li><a href="#community" class="sidebar__link" data-section="community">
+                    <span class="material-icons">groups</span>Community Management</a></li>
+                <li><a href="#analytics" class="sidebar__link" data-section="analytics">
+                    <span class="material-icons">analytics</span>Analytics & Reporting</a></li>
+                <li><a href="#policy" class="sidebar__link" data-section="policy">
+                    <span class="material-icons">policy</span>Policy & Compliance</a></li>
+                <li><a href="#admin" class="sidebar__link" data-section="admin">
+                    <span class="material-icons">settings</span>System Administration</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Executive Dashboard -->
+            <section id="dashboard" class="section section--active">
+                <h2>Executive Dashboard</h2>
+                
+                <!-- Metrics Cards -->
+                <div class="metrics-grid">
+                    <div class="metric-card" data-metric="total-projects">
+                        <div class="metric-card__icon">
+                            <span class="material-icons">eco</span>
+                        </div>
+                        <div class="metric-card__content">
+                            <h3 id="total-projects">15</h3>
+                            <p>Total Projects</p>
+                            <span class="metric-card__change">+3 this month</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="approved-projects">
+                        <div class="metric-card__icon">
+                            <span class="material-icons">check_circle</span>
+                        </div>
+                        <div class="metric-card__content">
+                            <h3 id="approved-projects">8</h3>
+                            <p>Approved Projects</p>
+                            <span class="metric-card__change">+2 this week</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="credits-today">
+                        <div class="metric-card__icon">
+                            <span class="material-icons">trending_up</span>
+                        </div>
+                        <div class="metric-card__content">
+                            <h3 id="credits-today">15,847</h3>
+                            <p>Credits Today</p>
+                            <span class="metric-card__change">+1,200 from yesterday</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="total-credits">
+                        <div class="metric-card__icon">
+                            <span class="material-icons">account_balance_wallet</span>
+                        </div>
+                        <div class="metric-card__content">
+                            <h3 id="total-credits">284,560</h3>
+                            <p>Total Credits</p>
+                            <span class="metric-card__change">Overall issued</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="panchayats">
+                        <div class="metric-card__icon">
+                            <span class="material-icons">location_city</span>
+                        </div>
+                        <div class="metric-card__content">
+                            <h3 id="panchayats">342</h3>
+                            <p>Panchayats</p>
+                            <span class="metric-card__change">Registered</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="communities">
+                        <div class="metric-card__icon">
+                            <span class="material-icons">groups</span>
+                        </div>
+                        <div class="metric-card__content">
+                            <h3 id="communities">245</h3>
+                            <p>Communities</p>
+                            <span class="metric-card__change">NGOs + SHGs</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- India Map and Activity Feed -->
+                <div class="dashboard-grid">
+                    <div class="map-container">
+                        <h3>Project Locations</h3>
+                        <div id="india-map" class="india-map">
+                            <svg viewBox="0 0 800 600" class="map-svg">
+                                <!-- Simplified India outline -->
+                                <path d="M250,100 L500,120 L550,200 L600,300 L580,400 L500,450 L400,480 L300,450 L200,400 L180,300 L200,200 Z" class="india-outline"/>
+                                <!-- State markers -->
+                                <circle cx="420" cy="180" r="8" class="state-marker" data-state="Tamil Nadu" data-projects="3"/>
+                                <circle cx="300" cy="200" r="6" class="state-marker" data-state="Gujarat" data-projects="2"/>
+                                <circle cx="380" cy="320" r="7" class="state-marker" data-state="Kerala" data-projects="2"/>
+                                <circle cx="480" cy="280" r="5" class="state-marker" data-state="Odisha" data-projects="1"/>
+                                <circle cx="520" cy="200" r="9" class="state-marker" data-state="West Bengal" data-projects="4"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="activity-feed">
+                        <h3>Recent Activity</h3>
+                        <div class="activity-list" id="activity-list">
+                            <!-- Activities will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Review Queue Panel -->
+                <div class="ai-queue-panel">
+                    <h3>AI Review Queue</h3>
+                    <div class="ai-queue-actions">
+                        <button class="btn btn--primary" id="bulk-approve">Bulk Approve</button>
+                        <button class="btn btn--outline" id="refresh-queue">
+                            <span class="material-icons">refresh</span>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="ai-queue-list" id="ai-queue-list">
+                        <!-- Queue items will be populated by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Project Pipeline -->
+            <section id="projects" class="section">
+                <div class="section-header">
+                    <h2>Project Pipeline</h2>
+                    <div class="section-actions">
+                        <button class="btn btn--primary" id="add-project-btn">
+                            <span class="material-icons">add</span>Add Project
+                        </button>
+                        <button class="btn btn--outline" id="export-projects">
+                            <span class="material-icons">download</span>Export
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="project-filters">
+                    <input type="text" class="form-control" id="project-search" placeholder="Search projects...">
+                    <select class="form-control" id="status-filter">
+                        <option value="">All Status</option>
+                        <option value="submitted">Submitted</option>
+                        <option value="under_review">Under Review</option>
+                        <option value="approved">Approved</option>
+                        <option value="monitoring">Monitoring</option>
+                    </select>
+                    <select class="form-control" id="state-filter">
+                        <option value="">All States</option>
+                        <option value="Tamil Nadu">Tamil Nadu</option>
+                        <option value="Gujarat">Gujarat</option>
+                        <option value="Kerala">Kerala</option>
+                        <option value="Odisha">Odisha</option>
+                        <option value="West Bengal">West Bengal</option>
+                    </select>
+                </div>
+
+                <div class="kanban-board" id="kanban-board">
+                    <div class="kanban-column" data-status="submitted">
+                        <h3>Submitted</h3>
+                        <div class="kanban-cards" id="submitted-cards"></div>
+                    </div>
+                    <div class="kanban-column" data-status="under_review">
+                        <h3>Under Review</h3>
+                        <div class="kanban-cards" id="under_review-cards"></div>
+                    </div>
+                    <div class="kanban-column" data-status="approved">
+                        <h3>Approved</h3>
+                        <div class="kanban-cards" id="approved-cards"></div>
+                    </div>
+                    <div class="kanban-column" data-status="monitoring">
+                        <h3>Monitoring</h3>
+                        <div class="kanban-cards" id="monitoring-cards"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Review Queue -->
+            <section id="ai-review" class="section">
+                <div class="section-header">
+                    <h2>AI Review Queue</h2>
+                    <div class="ai-stats">
+                        <button class="btn btn--outline" id="ai-performance-btn">
+                            <span class="material-icons">analytics</span>AI Performance
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="ai-review-controls">
+                    <div class="bulk-actions">
+                        <input type="checkbox" id="select-all-ai">
+                        <label for="select-all-ai">Select All</label>
+                        <button class="btn btn--primary" id="bulk-approve-selected" disabled>Approve Selected</button>
+                        <button class="btn btn--secondary" id="bulk-reject-selected" disabled>Reject Selected</button>
+                    </div>
+                    <select class="form-control" id="confidence-filter">
+                        <option value="">All Confidence Levels</option>
+                        <option value="high">High (>90%)</option>
+                        <option value="medium">Medium (70-90%)</option>
+                        <option value="low">Low (<70%)</option>
+                    </select>
+                </div>
+
+                <div class="ai-review-list" id="ai-review-full-list">
+                    <!-- AI review items will be populated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Verification & Auditing -->
+            <section id="verification" class="section">
+                <div class="section-header">
+                    <h2>Verification & Auditing</h2>
+                    <button class="btn btn--primary" id="schedule-audit">
+                        <span class="material-icons">schedule</span>Schedule Audit
+                    </button>
+                </div>
+                
+                <div class="verification-tabs">
+                    <button class="tab-btn active" data-tab="pending-audits">Pending Audits</button>
+                    <button class="tab-btn" data-tab="audit-trail">Audit Trail</button>
+                    <button class="tab-btn" data-tab="compliance">Compliance</button>
+                </div>
+
+                <div class="tab-content">
+                    <div id="pending-audits" class="tab-pane active">
+                        <div class="audit-list" id="audit-list">
+                            <!-- Audit items will be populated -->
+                        </div>
+                    </div>
+                    <div id="audit-trail" class="tab-pane">
+                        <div class="audit-trail" id="audit-trail-list">
+                            <!-- Audit trail will be populated -->
+                        </div>
+                    </div>
+                    <div id="compliance" class="tab-pane">
+                        <div class="compliance-dashboard">
+                            <div class="compliance-metrics">
+                                <div class="compliance-card">
+                                    <h4>CCTS 2023 Compliance</h4>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 85%"></div>
+                                    </div>
+                                    <span>85% Compliant</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Credit Issuance -->
+            <section id="credits" class="section">
+                <div class="section-header">
+                    <h2>Credit Issuance</h2>
+                    <button class="btn btn--primary" id="issue-credits">
+                        <span class="material-icons">account_balance_wallet</span>Issue Credits
+                    </button>
+                </div>
+                
+                <div class="credit-dashboard">
+                    <div class="credit-stats">
+                        <div class="stat-card">
+                            <h4>Available Credits</h4>
+                            <span class="stat-value" id="available-credits">12,450</span>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Pending Issuance</h4>
+                            <span class="stat-value" id="pending-credits">3,200</span>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Total Issued</h4>
+                            <span class="stat-value" id="issued-credits">284,560</span>
+                        </div>
+                    </div>
+                    
+                    <div class="credit-registry">
+                        <h3>Credit Registry</h3>
+                        <div class="registry-search">
+                            <input type="text" class="form-control" id="registry-search" placeholder="Search credits...">
+                            <button class="btn btn--outline" id="export-registry">Export Registry</button>
+                        </div>
+                        <div class="registry-table" id="credit-registry-table">
+                            <!-- Registry table will be populated -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Hedera Blockchain -->
+            <section id="blockchain" class="section">
+                <div class="section-header">
+                    <h2>Hedera Blockchain Network</h2>
+                    <button class="btn btn--primary" id="sync-blockchain">
+                        <span class="material-icons">sync</span>Sync Network
+                    </button>
+                </div>
+                
+                <div class="blockchain-status">
+                    <div class="status-grid">
+                        <div class="status-card">
+                            <span class="material-icons status-icon operational">check_circle</span>
+                            <h4>Network Status</h4>
+                            <span id="network-status">Operational</span>
+                        </div>
+                        <div class="status-card">
+                            <span class="material-icons status-icon">schedule</span>
+                            <h4>Last Block</h4>
+                            <span id="last-block">2 seconds ago</span>
+                        </div>
+                        <div class="status-card">
+                            <span class="material-icons status-icon">trending_up</span>
+                            <h4>Network Health</h4>
+                            <span id="network-health">99.8%</span>
+                        </div>
+                        <div class="status-card">
+                            <span class="material-icons status-icon">account_balance</span>
+                            <h4>Today's Transactions</h4>
+                            <span id="today-transactions">156</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="transaction-viewer">
+                    <h3>Recent Transactions</h3>
+                    <div class="transaction-list" id="transaction-list">
+                        <!-- Transactions will be populated -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Community Management -->
+            <section id="community" class="section">
+                <div class="section-header">
+                    <h2>Community Management</h2>
+                    <button class="btn btn--primary" id="add-community">
+                        <span class="material-icons">add</span>Add Community
+                    </button>
+                </div>
+                
+                <div class="community-stats">
+                    <div class="stat-row">
+                        <div class="stat-item">
+                            <span class="material-icons">groups</span>
+                            <div>
+                                <h4>Active Communities</h4>
+                                <span id="active-communities">8</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <span class="material-icons">trending_up</span>
+                            <div>
+                                <h4>Total Revenue</h4>
+                                <span id="total-revenue">₹2,84,560</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <span class="material-icons">person</span>
+                            <div>
+                                <h4>Total Members</h4>
+                                <span id="total-members">1,248</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="community-list" id="community-list">
+                    <!-- Communities will be populated -->
+                </div>
+            </section>
+
+            <!-- Analytics & Reporting -->
+            <section id="analytics" class="section">
+                <div class="section-header">
+                    <h2>Analytics & Reporting</h2>
+                    <div class="report-actions">
+                        <select class="form-control" id="report-type">
+                            <option value="comprehensive">Comprehensive Report</option>
+                            <option value="project-summary">Project Summary</option>
+                            <option value="financial">Financial Report</option>
+                            <option value="compliance">Compliance Report</option>
+                        </select>
+                        <select class="form-control" id="report-format">
+                            <option value="pdf">PDF</option>
+                            <option value="excel">Excel</option>
+                            <option value="csv">CSV</option>
+                            <option value="json">JSON</option>
+                        </select>
+                        <button class="btn btn--primary" id="generate-report">
+                            <span class="material-icons">description</span>Generate Report
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="analytics-dashboard">
+                    <div class="chart-container" style="position: relative; height: 400px;">
+                        <canvas id="analytics-chart"></canvas>
+                    </div>
+                    
+                    <div class="analytics-filters">
+                        <label>Date Range:</label>
+                        <input type="date" id="start-date" class="form-control">
+                        <input type="date" id="end-date" class="form-control">
+                        <button class="btn btn--outline" id="apply-filters">Apply Filters</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Policy & Compliance -->
+            <section id="policy" class="section">
+                <div class="section-header">
+                    <h2>Policy & Compliance</h2>
+                    <button class="btn btn--primary" id="upload-policy">
+                        <span class="material-icons">upload_file</span>Upload Policy
+                    </button>
+                </div>
+                
+                <div class="policy-dashboard">
+                    <div class="compliance-overview">
+                        <h3>CCTS 2023 Compliance Status</h3>
+                        <div class="compliance-progress">
+                            <div class="progress-item">
+                                <span>Methodology Compliance</span>
+                                <div class="progress-bar"><div class="progress-fill" style="width: 95%"></div></div>
+                                <span>95%</span>
+                            </div>
+                            <div class="progress-item">
+                                <span>Documentation Standards</span>
+                                <div class="progress-bar"><div class="progress-fill" style="width: 88%"></div></div>
+                                <span>88%</span>
+                            </div>
+                            <div class="progress-item">
+                                <span>Monitoring Requirements</span>
+                                <div class="progress-bar"><div class="progress-fill" style="width: 92%"></div></div>
+                                <span>92%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="policy-documents">
+                        <h3>Policy Documents</h3>
+                        <div class="document-list" id="policy-documents">
+                            <!-- Policy documents will be populated -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Administration -->
+            <section id="admin" class="section">
+                <div class="section-header">
+                    <h2>System Administration</h2>
+                    <button class="btn btn--primary" id="add-user">
+                        <span class="material-icons">person_add</span>Add User
+                    </button>
+                </div>
+                
+                <div class="admin-tabs">
+                    <button class="tab-btn active" data-tab="user-management">Users</button>
+                    <button class="tab-btn" data-tab="system-settings">Settings</button>
+                    <button class="tab-btn" data-tab="system-health">Health</button>
+                </div>
+
+                <div class="tab-content">
+                    <div id="user-management" class="tab-pane active">
+                        <div class="user-list" id="user-list">
+                            <!-- Users will be populated -->
+                        </div>
+                    </div>
+                    <div id="system-settings" class="tab-pane">
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <label class="form-label">System Name</label>
+                                <input type="text" class="form-control" value="BlueRoots Registry" id="system-name">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Auto-sync Interval (minutes)</label>
+                                <input type="number" class="form-control" value="30" id="sync-interval">
+                            </div>
+                            <button class="btn btn--primary" id="save-settings">Save Settings</button>
+                        </div>
+                    </div>
+                    <div id="system-health" class="tab-pane">
+                        <div class="health-metrics">
+                            <div class="health-card">
+                                <h4>System Uptime</h4>
+                                <span class="health-value">99.97%</span>
+                            </div>
+                            <div class="health-card">
+                                <h4>Database Status</h4>
+                                <span class="health-value operational">Healthy</span>
+                            </div>
+                            <div class="health-card">
+                                <h4>API Response Time</h4>
+                                <span class="health-value">145ms</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Add Project Modal -->
+    <div id="add-project-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Project</h3>
+                <button class="modal-close" id="close-add-project">&times;</button>
+            </div>
+            <form id="add-project-form">
+                <div class="form-group">
+                    <label class="form-label">Project Name</label>
+                    <input type="text" class="form-control" id="project-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">State</label>
+                    <select class="form-control" id="project-state" required>
+                        <option value="">Select State</option>
+                        <option value="Tamil Nadu">Tamil Nadu</option>
+                        <option value="Gujarat">Gujarat</option>
+                        <option value="Kerala">Kerala</option>
+                        <option value="Odisha">Odisha</option>
+                        <option value="West Bengal">West Bengal</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ecosystem Type</label>
+                    <select class="form-control" id="project-type" required>
+                        <option value="">Select Type</option>
+                        <option value="mangrove">Mangrove</option>
+                        <option value="seagrass">Seagrass</option>
+                        <option value="saltmarsh">Salt Marsh</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Area (hectares)</label>
+                    <input type="number" class="form-control" id="project-area" step="0.1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Community Partner</label>
+                    <input type="text" class="form-control" id="project-community" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Estimated Credits</label>
+                    <input type="number" class="form-control" id="project-credits" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" id="cancel-add-project">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Add Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI Performance Modal -->
+    <div id="ai-performance-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>AI Performance Statistics</h3>
+                <button class="modal-close" id="close-ai-performance">&times;</button>
+            </div>
+            <div class="ai-performance-stats">
+                <div class="performance-metric">
+                    <h4>Overall Accuracy</h4>
+                    <span class="performance-value">94.2%</span>
+                </div>
+                <div class="performance-metric">
+                    <h4>Reviews Processed</h4>
+                    <span class="performance-value">1,247</span>
+                </div>
+                <div class="performance-metric">
+                    <h4>Average Confidence</h4>
+                    <span class="performance-value">87.3%</span>
+                </div>
+                <div class="performance-metric">
+                    <h4>False Positives</h4>
+                    <span class="performance-value">3.1%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Panel -->
+    <div id="notifications-panel" class="notifications-panel hidden">
+        <div class="notifications-header">
+            <h3>Notifications</h3>
+            <button id="mark-all-read">Mark All Read</button>
+        </div>
+        <div class="notifications-list" id="notifications-list">
+            <!-- Notifications will be populated -->
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
