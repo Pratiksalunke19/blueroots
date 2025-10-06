@@ -2,12 +2,14 @@ package com.blueroots.carbonregistry.viewmodel
 
 import SingleLiveEvent
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.blueroots.carbonregistry.data.models.*
 import com.blueroots.carbonregistry.data.repository.MonitoringDataRepository
+import com.blueroots.carbonregistry.data.repository.MonitoringRepository
 import com.blueroots.carbonregistry.data.storage.MonitoringStats
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -15,8 +17,11 @@ import java.util.*
 
 class MonitoringViewModel(application: Application) : AndroidViewModel(application) {
 
-    // Repository with SharedPreferences
+    // Repository with SharedPreferences (local storage)
     private val repository = MonitoringDataRepository(application.applicationContext)
+
+    // Repository for Supabase cloud sync
+    private val monitoringRepository = MonitoringRepository()
 
     // LiveData from Repository
     val monitoringDataList: LiveData<List<MonitoringData>> = repository.allMonitoringData
@@ -30,6 +35,10 @@ class MonitoringViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _syncStatus = MutableLiveData<SyncStatus>()
     val syncStatus: LiveData<SyncStatus> = _syncStatus
+
+    // NEW: Cloud sync status message
+    private val _cloudSyncStatus = MutableLiveData<String>()
+    val cloudSyncStatus: LiveData<String> = _cloudSyncStatus
 
     // Monitoring statistics
     private val _monitoringStats = MutableLiveData<MonitoringStats>()
@@ -75,6 +84,92 @@ class MonitoringViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    /**
+     * NEW: Upload monitoring data with Supabase cloud sync
+     * This is the main method to use from Fragment
+     */
+    fun uploadMonitoringDataWithSync(data: MonitoringData) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _cloudSyncStatus.value = "Uploading monitoring data..."
+
+                // Basic validation
+                if (data.dataCollector.isBlank()) {
+                    _uploadResult.value = UploadResult.Error("Data collector name is required")
+                    return@launch
+                }
+
+                if (data.location.latitude == 0.0 || data.location.longitude == 0.0) {
+                    _uploadResult.value = UploadResult.Error("Valid GPS coordinates are required")
+                    return@launch
+                }
+
+                if (data.notes.isBlank()) {
+                    _uploadResult.value = UploadResult.Error("Notes are required to describe the monitoring data")
+                    return@launch
+                }
+
+                // Generate ID if not provided
+                val dataId = if (data.id.isBlank()) {
+                    repository.generateNextMonitoringId()
+                } else {
+                    data.id
+                }
+
+                // Update data with proper sync and verification status
+                val uploadedData = data.copy(
+                    id = dataId,
+                    syncStatus = SyncStatus.SYNCED,
+                    verificationStatus = VerificationStatus.PENDING,
+                    createdAt = Date(),
+                    updatedAt = Date()
+                )
+
+                // 1. Save to local storage first (instant, works offline)
+                repository.addMonitoringData(uploadedData)
+                Log.d("MonitoringViewModel", "✅ Monitoring data saved locally: $dataId")
+
+                // 2. Sync to Supabase in background
+                _cloudSyncStatus.value = "Syncing to cloud..."
+                val monitoringId = monitoringRepository.insertMonitoringData(uploadedData)
+
+                if (monitoringId != null) {
+                    Log.d("MonitoringViewModel", "✅ Monitoring data synced to Supabase: $monitoringId")
+                    _cloudSyncStatus.value = "✅ Synced to cloud"
+                    _uploadResult.value = UploadResult.Success(
+                        "✅ Monitoring data uploaded successfully!\n" +
+                                "Data ID: ${dataId.takeLast(8)}...\n" +
+                                "Status: Pending Verification\n" +
+                                "🔗 Synced to cloud registry"
+                    )
+                } else {
+                    Log.w("MonitoringViewModel", "⚠️ Monitoring data saved locally but cloud sync failed")
+                    _cloudSyncStatus.value = "⚠️ Saved locally (sync pending)"
+                    _uploadResult.value = UploadResult.Success(
+                        "✅ Monitoring data uploaded locally!\n" +
+                                "Data ID: ${dataId.takeLast(8)}...\n" +
+                                "Status: Pending Verification\n" +
+                                "⚠️ Cloud sync will retry later"
+                    )
+                }
+
+                println("🔧 DEBUG: Monitoring data saved: $dataId")
+
+            } catch (e: Exception) {
+                Log.e("MonitoringViewModel", "❌ Error uploading monitoring data: ${e.message}", e)
+                _cloudSyncStatus.value = "❌ Sync error"
+                _uploadResult.value = UploadResult.Error("Failed to upload monitoring data: ${e.message}")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * LEGACY: Old method without cloud sync (kept for backward compatibility)
+     * Use uploadMonitoringDataWithSync() instead
+     */
     fun uploadMonitoringData(data: MonitoringData) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -352,7 +447,7 @@ class MonitoringViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun clearUploadResult() {
-        _uploadResult.value = null
+//        _uploadResult.value = null
     }
 
     sealed class UploadResult {

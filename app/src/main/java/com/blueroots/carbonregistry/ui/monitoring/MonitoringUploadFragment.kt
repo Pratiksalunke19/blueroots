@@ -33,7 +33,6 @@ class MonitoringUploadFragment : Fragment() {
     private var _binding: FragmentMonitoringUploadBinding? = null
     private val binding get() = _binding!!
 
-    // Use activityViewModels to share with monitoring list
     private val viewModel: MonitoringViewModel by activityViewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var photoAdapter: PhotoAdapter
@@ -42,42 +41,27 @@ class MonitoringUploadFragment : Fragment() {
     private var selectedMonitoringDate: Calendar = Calendar.getInstance()
     private val selectedPhotos = mutableListOf<MonitoringPhoto>()
 
-    // Notification tracking properties
     private val PREFS_NAME = "monitoring_upload_notifications"
-    private val shownNotifications = mutableSetOf<String>()
 
-    // Camera and gallery launchers
     private val takePictureLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) {
-            // Handle successful photo capture
-            addPhotoToCollection("camera_photo_${System.currentTimeMillis()}.jpg")
-        }
+        if (success) addPhotoToCollection("camera_photo_${System.currentTimeMillis()}.jpg")
     }
 
     private val selectPhotoLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            addPhotoToCollection(it.toString())
-        }
+        uri?.let { addPhotoToCollection(it.toString()) }
     }
 
-    // Location permission launcher
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         when {
-            permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
-                getCurrentLocation()
-            }
-            permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
-                getCurrentLocation()
-            }
-            else -> {
-                Snackbar.make(binding.root, "Location permission denied", Snackbar.LENGTH_LONG).show()
-            }
+            permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> getCurrentLocation()
+            permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> getCurrentLocation()
+            else -> Snackbar.make(binding.root, "Location permission denied", Snackbar.LENGTH_LONG).show()
         }
     }
 
@@ -94,7 +78,6 @@ class MonitoringUploadFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
-        // Clear old notifications on fragment creation
         clearOldNotifications()
 
         setupRecyclerView()
@@ -102,6 +85,48 @@ class MonitoringUploadFragment : Fragment() {
         setupClickListeners()
         observeViewModel()
         updateUIBasedOnDataType()
+
+        // 🔹 Prefill demo data for testing
+        prefillDemoData()
+    }
+
+    private fun prefillDemoData() {
+        binding.apply {
+            dropdownProject.setText("Sundarbans Mangrove Restoration", false)
+            dropdownDataType.setText("Soil Sample", false)
+            editTextMonitoringDate.setText("05/10/2025")
+            editTextDataCollector.setText("Dr. Riya Menon")
+            editTextQualifications.setText("Field Ecologist, PhD")
+            dropdownPriority.setText("Medium", false)
+            editTextLatitude.setText("21.945123")
+            editTextLongitude.setText("88.732451")
+            editTextAltitude.setText("7.4")
+            editTextPlotId.setText("Plot-A12")
+            editTextTransectId.setText("Transect-3")
+            editTextSiteDescription.setText("Coastal mangrove site near delta edge")
+            editTextSampleId.setText("SS-1024")
+            editTextSampleDepth.setText("15.5")
+            editTextOrganicCarbon.setText("3.2")
+            editTextBulkDensity.setText("1.3")
+            editTextMoisture.setText("28.7")
+            editTextPH.setText("7.1")
+            editTextSalinity.setText("0.4")
+            editTextSoilTemperature.setText("27.6")
+            editTextEquipment.setText("Soil auger, GPS, Moisture probe")
+            dropdownComplianceStandard.setText("VCS", false)
+            editTextMethodologyVersion.setText("VCS 4.2.1")
+            editTextReportingPeriod.setText("Q3 2025")
+            editTextNotes.setText("All sampling conducted post-tide; conditions stable.")
+
+            // Mark data complete
+            chipDataComplete.isChecked = true
+
+            // Add 2 demo photos
+            addPhotoToCollection("sample_soil_photo_1.jpg")
+            addPhotoToCollection("sample_site_photo_2.jpg")
+
+            updateStatus()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -172,20 +197,12 @@ class MonitoringUploadFragment : Fragment() {
                 selectPhotoFromGallery()
             }
 
-            // Upload button
+            // Upload button - UPDATED to use new sync method
             buttonUploadData.setOnClickListener {
                 if (validateForm()) {
                     uploadMonitoringData()
                 }
             }
-
-            // ADD: View monitoring list button (optional - can be added to toolbar or as separate button)
-            // You can add this button to your layout if needed
-            /*
-            buttonViewMonitoringList.setOnClickListener {
-                navigateToMonitoringList()
-            }
-            */
         }
     }
 
@@ -420,9 +437,16 @@ class MonitoringUploadFragment : Fragment() {
         return isValid
     }
 
+    // UPDATED: Use new sync method
     private fun uploadMonitoringData() {
         val monitoringData = createMonitoringDataFromForm()
-        viewModel.uploadMonitoringData(monitoringData)
+
+        // Disable button to prevent double submission
+        binding.buttonUploadData.isEnabled = false
+        binding.buttonUploadData.text = "Uploading..."
+
+        // Use the new method with Supabase sync
+        viewModel.uploadMonitoringDataWithSync(monitoringData)
     }
 
     private fun createMonitoringDataFromForm(): MonitoringData {
@@ -508,14 +532,25 @@ class MonitoringUploadFragment : Fragment() {
             when (result) {
                 is MonitoringViewModel.UploadResult.Success -> {
                     onUploadSuccess(result.message)
-                    viewModel.clearUploadResult() // Add this method to clear the result
+                    viewModel.clearUploadResult()
                 }
                 is MonitoringViewModel.UploadResult.Error -> {
-                    Snackbar.make(binding.root, "Error: ${result.message}", Snackbar.LENGTH_LONG)
+                    Snackbar.make(binding.root, "❌ Error: ${result.message}", Snackbar.LENGTH_LONG)
                         .setBackgroundTint(resources.getColor(R.color.status_error, null))
                         .show()
-                    viewModel.clearUploadResult() // Add this method to clear the result
+                    // Re-enable button on error
+                    binding.buttonUploadData.isEnabled = true
+                    binding.buttonUploadData.text = "Upload Monitoring Data"
+                    viewModel.clearUploadResult()
                 }
+            }
+        }
+
+        // NEW: Observe cloud sync status
+        viewModel.cloudSyncStatus.observe(viewLifecycleOwner) { status ->
+            if (status.isNotEmpty()) {
+                // Show sync status briefly (optional)
+                // You can show this in a separate status TextView if you have one
             }
         }
     }
@@ -539,9 +574,13 @@ class MonitoringUploadFragment : Fragment() {
         }
 
         clearForm()
+
+        // Re-enable button after successful upload
+        binding.buttonUploadData.isEnabled = true
+        binding.buttonUploadData.text = "Upload Monitoring Data"
     }
 
-    // ADD: Helper methods for notification tracking
+    // Helper methods for notification tracking
     private fun hasNotificationBeenShown(key: String): Boolean {
         val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getBoolean(key, false)
@@ -572,28 +611,11 @@ class MonitoringUploadFragment : Fragment() {
         editor.apply()
     }
 
-
-    /**
-     * Navigate to monitoring data list
-     * You can implement this in different ways:
-     * 1. Create a separate fragment and navigate to it
-     * 2. Show a bottom sheet with monitoring list
-     * 3. Add a toggle in the same fragment to switch between upload and list view
-     */
     private fun navigateToMonitoringList() {
-        // Option 1: Navigate to a separate monitoring list fragment (if you create one)
-        // findNavController().navigate(R.id.action_monitoringUpload_to_monitoringList)
-
-        // Option 2: For now, just show a preview of monitoring data in a dialog
-        showMonitoringDataPreview()
-
-        // Option 3: You could also switch to credits tab to show the impact
-        // findNavController().navigate(R.id.creditIssuanceFragment)
+        // Navigate to credits tab to show the impact
+        findNavController().navigate(R.id.creditIssuanceFragment)
     }
 
-    /**
-     * Show a preview of monitoring data (temporary solution)
-     */
     private fun showMonitoringDataPreview() {
         viewModel.filteredMonitoringData.value?.let { data ->
             val recentEntries = data.take(3)
@@ -613,8 +635,6 @@ class MonitoringUploadFragment : Fragment() {
                 .setMessage(previewText)
                 .setPositiveButton("OK", null)
                 .setNeutralButton("📊 See Impact on Credits") { _, _ ->
-                    // Navigate to credits to show monitoring impact
-                    // findNavController().navigate(R.id.creditIssuanceFragment)
                     Snackbar.make(binding.root, "🔗 Monitoring data impacts credit calculations!", Snackbar.LENGTH_LONG).show()
                 }
                 .show()
